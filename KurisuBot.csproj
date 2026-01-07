@@ -7,4 +7,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02566" />
+    <PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02566" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="5.0.0-nightly-02566" />
+  </ItemGroup>
+
 </Project>

@@ -1,2 +1,58 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿using DSharpPlus;
+using DSharpPlus.Commands;
+using DSharpPlus.Commands.Processors.SlashCommands;
+using DSharpPlus.Commands.Processors.TextCommands;
+using DSharpPlus.Commands.Processors.TextCommands.Parsing;
+using DSharpPlus.Entities;
+using DSharpPlus.Interactivity;
+using DSharpPlus.Interactivity.Extensions;
+
+namespace KurisuBot
+{
+    internal class Program
+    {
+        public static DiscordClient Client { get; set; }
+
+        static async Task Main(string[] args)
+        {
+            ConfigReader reader = await new ConfigReader().ReadConfig();
+
+            DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
+                reader.DiscordC.Token,
+                TextCommandProcessor.RequiredIntents | SlashCommandProcessor.RequiredIntents | DiscordIntents.MessageContents
+            );
+
+            builder.UseInteractivity(new InteractivityConfiguration()
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            });
+
+            //builder.ConfigureEventHandlers(b => b
+            //    .HandleComponentInteractionCreated()
+            //);
+
+            //builder.UseCommands((IServiceProvider serviceProvider, CommandsExtension extension) =>
+            //{
+            //    extension.AddCommands(new[]
+            //    {
+            //    });
+
+            //    extension.AddProcessor(new TextCommandProcessor(new()
+            //    {
+            //        PrefixResolver = new DefaultPrefixResolver(true, "?", "&").ResolvePrefixAsync
+            //    }));
+
+            //    extension.AddProcessor(new SlashCommandProcessor());
+            //}, new CommandsConfiguration()
+            //{
+            //    DebugGuildId = 
+            //});
+
+            Client = builder.Build();
+
+            DiscordActivity status = new("Hacking to the Gate", DiscordActivityType.ListeningTo);
+            await Client.ConnectAsync(status, DiscordUserStatus.Online);
+            await Task.Delay(-1);     
+        }
+    }
+}
