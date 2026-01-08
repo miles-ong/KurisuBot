@@ -18,7 +18,7 @@ namespace KurisuBot
             ConfigReader reader = await new ConfigReader().ReadConfig();
 
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
-                reader.DiscordC.Token,
+                reader.Discord.Token,
                 TextCommandProcessor.RequiredIntents | SlashCommandProcessor.RequiredIntents | DiscordIntents.MessageContents
             );
 
@@ -45,14 +45,14 @@ namespace KurisuBot
             //    extension.AddProcessor(new SlashCommandProcessor());
             //}, new CommandsConfiguration()
             //{
-            //    DebugGuildId = 
+            //    DebugGuildId = 1458538350653866089
             //});
 
             Client = builder.Build();
 
             DiscordActivity status = new("Hacking to the Gate", DiscordActivityType.ListeningTo);
             await Client.ConnectAsync(status, DiscordUserStatus.Online);
-            await Task.Delay(-1);     
+            await Task.Delay(-1);
         }
     }
 }

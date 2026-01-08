@@ -15,17 +15,18 @@ namespace KurisuBot
 
     internal class ConfigReader
     {
-        public DiscordConfig DiscordC { get; set; } = new();
+        public DiscordConfig Discord { get; set; } = new();
 
         public async Task<ConfigReader> ReadConfig()
         {
             using StreamReader sr = new StreamReader("config.json");
             string jsonString = await sr.ReadToEndAsync();
+            Console.WriteLine(jsonString);
             ConfigReader reader = JsonSerializer.Deserialize<ConfigReader>(jsonString);
 
-            DiscordC = reader.DiscordC;
+            Discord = reader.Discord;
 
-            Console.WriteLine($"[ConfigReader] DiscordConfig Read: {DiscordC.IsRead()}");
+            Console.WriteLine($"[ConfigReader] DiscordConfig Read: {Discord.IsRead()}");
 
             return reader;
         }
