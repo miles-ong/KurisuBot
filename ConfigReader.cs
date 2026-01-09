@@ -13,20 +13,32 @@ namespace KurisuBot
         }
     }
 
+    internal sealed class SupabaseConfig
+    {
+        public string ConnectionString { get; set; } = "";
+
+        public bool IsRead()
+        {
+            return !string.IsNullOrEmpty(ConnectionString);
+        }
+    }
+
     internal class ConfigReader
     {
         public DiscordConfig Discord { get; set; } = new();
+        public SupabaseConfig Supabase { get; set; } = new();
 
         public async Task<ConfigReader> ReadConfig()
         {
             using StreamReader sr = new StreamReader("config.json");
             string jsonString = await sr.ReadToEndAsync();
-            Console.WriteLine(jsonString);
             ConfigReader reader = JsonSerializer.Deserialize<ConfigReader>(jsonString);
 
             Discord = reader.Discord;
+            Supabase = reader.Supabase;
 
             Console.WriteLine($"[ConfigReader] DiscordConfig Read: {Discord.IsRead()}");
+            Console.WriteLine($"[ConfigReader] SupabaseConfig Read: {Supabase.IsRead()}");
 
             return reader;
         }
