@@ -18,6 +18,8 @@ namespace KurisuBot
         {
             ConfigReader reader = await new ConfigReader().ReadConfig();
 
+            await KurisuAnimeCache.Initialize(reader.Supabase.ConnectionString);
+
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
                 reader.Discord.Token,
                 TextCommandProcessor.RequiredIntents | SlashCommandProcessor.RequiredIntents | DiscordIntents.MessageContents
@@ -32,22 +34,23 @@ namespace KurisuBot
             //    .HandleComponentInteractionCreated()
             //);
 
-            //builder.UseCommands((IServiceProvider serviceProvider, CommandsExtension extension) =>
-            //{
-            //    extension.AddCommands(new[]
-            //    {
-            //    });
+            builder.UseCommands((IServiceProvider serviceProvider, CommandsExtension extension) =>
+            {
+                extension.AddCommands(new[]
+                {
+                    typeof(KurisuAnimeCommands)
+                });
 
-            //    extension.AddProcessor(new TextCommandProcessor(new()
-            //    {
-            //        PrefixResolver = new DefaultPrefixResolver(true, "?", "&").ResolvePrefixAsync
-            //    }));
+                extension.AddProcessor(new TextCommandProcessor(new()
+                {
+                    PrefixResolver = new DefaultPrefixResolver(true, "?", "&").ResolvePrefixAsync
+                }));
 
-            //    extension.AddProcessor(new SlashCommandProcessor());
-            //}, new CommandsConfiguration()
-            //{
-            //    DebugGuildId = 1458538350653866089
-            //});
+                extension.AddProcessor(new SlashCommandProcessor());
+            }, new CommandsConfiguration()
+            {
+                DebugGuildId = 1458538350653866089
+            });
 
             Client = builder.Build();
 

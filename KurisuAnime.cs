@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using FuzzySharp;
+using Npgsql;
 using System.Collections.Concurrent;
 
 namespace KurisuBot
@@ -6,23 +7,23 @@ namespace KurisuBot
     public class KurisuAnime
     {
         public int Id { get; private set; }
-        public string Name { get; private set; } = "";
+        public string Title { get; private set; } = "";
         public string Description { get; private set; } = "";
         public string? ImageKey { get; private set; }
         public List<KurisuCharacter> Characters { get; private set; } = new();
 
-        public KurisuAnime(int id, string name, string description, string? imageKey = null)
+        public KurisuAnime(int id, string title, string description, string? imageKey = null)
         {
             Id = id;
-            Name = name;
+            Title = title;
             Description = description;
             ImageKey = imageKey;
         }
 
-        public async Task<bool> SetName(string newName)
+        public async Task<bool> SetTitle(string newTitle)
         {
-            string oldName = Name;
-            Name = newName;
+            string oldTitle = Title;
+            Title = newTitle;
 
             try
             {
@@ -31,7 +32,7 @@ namespace KurisuBot
             }
             catch
             {
-                Name = oldName;
+                Title = oldTitle;
                 return false;
             }
         }
@@ -82,7 +83,37 @@ namespace KurisuBot
             await LoadAll();
         }
 
-        public static async Task<KurisuAnime> Add(string name, string description, string? imageKey = null)
+        public static KurisuAnime? SearchByID(int id)
+        {
+            _cache.TryGetValue(id, out var anime);
+            return anime;
+        }
+
+        public static List<KurisuAnime> SearchByTitle(string title, int maxResults = 10)
+        {
+            IEnumerable<KurisuAnime> allAnime = _cache.Values;
+
+            if(!allAnime.Any())
+            {
+                return new();
+            }
+
+            var results = allAnime
+                .Select(anime => new
+                {
+                    Anime = anime,
+                    Score = Fuzz.PartialRatio(title.ToLower(), anime.Title.ToLower())
+                })
+                .Where(x => x.Score > 60)
+                .OrderByDescending(x => x.Score)
+                .Take(maxResults)
+                .Select(x => x.Anime)
+                .ToList();
+
+            return results;
+        }
+
+        public static async Task<KurisuAnime> Add(string title, string description, string? imageKey = null)
         {
             try
             {
@@ -90,22 +121,23 @@ namespace KurisuBot
                 await connection.OpenAsync();
 
                 const string sqlQuery = @"
-                    INSERT INTO anime (name, description, imagekey)
-                    VALUES (@name, @description, @imagekey)
+                    INSERT INTO anime (title, description, imagekey)
+                    VALUES (@title, @description, @imagekey)
                     RETURNING id
                 ";
 
                 await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
-                command.Parameters.AddWithValue("@name", name);
+                command.Parameters.AddWithValue("@title", title);
                 command.Parameters.AddWithValue("@description", description);
                 command.Parameters.AddWithValue("@imagekey", imageKey ?? (object)DBNull.Value);
 
-                int id = (int)(await command.ExecuteScalarAsync())!;
+                long idLong = (long)(await command.ExecuteScalarAsync())!;
+                int id = (int)idLong;
 
-                KurisuAnime anime = new KurisuAnime(id, name, description, imageKey);
+                KurisuAnime anime = new KurisuAnime(id, title, description, imageKey);
                 _cache.TryAdd(id, anime);
 
-                Console.WriteLine($"[KurisuAnimeCache] Added anime '{name}' with ID {id}");
+                Console.WriteLine($"[KurisuAnimeCache] Added anime '{title}' with ID {id}");
                 return anime;
             }
             catch(Exception ex)
@@ -124,7 +156,7 @@ namespace KurisuBot
 
                 const string sqlQuery = @"
                     UPDATE anime
-                    SET name = @name,
+                    SET title = @title,
                         description = @description,
                         imagekey = @imagekey
                     WHERE id = @id
@@ -132,14 +164,14 @@ namespace KurisuBot
 
                 await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
                 command.Parameters.AddWithValue("@id", anime.Id);
-                command.Parameters.AddWithValue("@name", anime.Name);
+                command.Parameters.AddWithValue("@title", anime.Title);
                 command.Parameters.AddWithValue("@description", anime.Description);
                 command.Parameters.AddWithValue("@imagekey", anime.ImageKey ?? (object)DBNull.Value);
                 int rowsAffected = await command.ExecuteNonQueryAsync();
 
                 if(rowsAffected > 0)
                 {
-                    Console.WriteLine($"[KurisuAnimeCache] Updated anime '{anime.Name}' (ID: {anime.Id})");
+                    Console.WriteLine($"[KurisuAnimeCache] Updated anime '{anime.Title}' (ID: {anime.Id})");
                 }
                 else
                 {
@@ -162,7 +194,7 @@ namespace KurisuBot
 
                 const string sqlQuery = @"
                     SELECT id,
-                           name,
+                           title,
                            description,
                            imagekey
                     FROM anime
@@ -174,14 +206,14 @@ namespace KurisuBot
                 while (await reader.ReadAsync())
                 {
                     int id = reader.GetInt32(reader.GetOrdinal("id"));
-                    string name = reader.GetString(reader.GetOrdinal("name"));
+                    string title = reader.GetString(reader.GetOrdinal("title"));
                     string description = reader.GetString(reader.GetOrdinal("description"));
                     int imageKeyOrdinal = reader.GetOrdinal("imagekey");
                     string? imageKey = reader.IsDBNull(imageKeyOrdinal)
                         ? null
                         : reader.GetString(imageKeyOrdinal);
 
-                    KurisuAnime anime = new KurisuAnime(id, name, description, imageKey);
+                    KurisuAnime anime = new KurisuAnime(id, title, description, imageKey);
                     _cache.TryAdd(id, anime);
                 }
 
