@@ -20,6 +20,7 @@ namespace KurisuBot
             await KurisuAnimeCache.InitializeAsync(reader.Supabase.ConnectionString);
             await KurisuCharacterCache.InitializeAsync(reader.Supabase.ConnectionString);
             KurisuUserCache.Initialize(reader.Supabase.ConnectionString);
+            await AniListHook.InitializeAsync();
 
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
                 reader.Discord.Token,
@@ -33,6 +34,7 @@ namespace KurisuBot
 
             builder.ConfigureEventHandlers(b => b
                 .HandleComponentInteractionCreated(UniversalEventHandler.ConfirmationInteractionAsync)
+                .HandleComponentInteractionCreated(KurisuQuizEventHandler.QuizInteractionAsync)
             );
 
             builder.UseCommands((IServiceProvider serviceProvider, CommandsExtension extension) =>
@@ -40,7 +42,8 @@ namespace KurisuBot
                 extension.AddCommands(new[]
                 {
                     typeof(KurisuAnimeCommands),
-                    typeof(KurisuCharacterCommands)
+                    typeof(KurisuCharacterCommands),
+                    typeof(KurisuQuizCommands)
                 });
 
                 extension.AddProcessor(new TextCommandProcessor(new()
