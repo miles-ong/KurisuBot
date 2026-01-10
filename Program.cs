@@ -6,7 +6,6 @@ using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
 using DSharpPlus.Interactivity;
 using DSharpPlus.Interactivity.Extensions;
-using Npgsql;
 
 namespace KurisuBot
 {
@@ -18,7 +17,9 @@ namespace KurisuBot
         {
             ConfigReader reader = await new ConfigReader().ReadConfig();
 
-            await KurisuAnimeCache.Initialize(reader.Supabase.ConnectionString);
+            await KurisuAnimeCache.InitializeAsync(reader.Supabase.ConnectionString);
+            await KurisuCharacterCache.InitializeAsync(reader.Supabase.ConnectionString);
+            await KurisuUserCache.InitializeAsync(reader.Supabase.ConnectionString);
 
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
                 reader.Discord.Token,
@@ -30,15 +31,16 @@ namespace KurisuBot
                 Timeout = TimeSpan.FromSeconds(30)
             });
 
-            //builder.ConfigureEventHandlers(b => b
-            //    .HandleComponentInteractionCreated()
-            //);
+            builder.ConfigureEventHandlers(b => b
+                .HandleComponentInteractionCreated(UniversalEventHandler.ConfirmationInteractionAsync)
+            );
 
             builder.UseCommands((IServiceProvider serviceProvider, CommandsExtension extension) =>
             {
                 extension.AddCommands(new[]
                 {
-                    typeof(KurisuAnimeCommands)
+                    typeof(KurisuAnimeCommands),
+                    typeof(KurisuCharacterCommands)
                 });
 
                 extension.AddProcessor(new TextCommandProcessor(new()

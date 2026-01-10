@@ -1,24 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DSharpPlus.Commands;
+using DSharpPlus.Entities;
+using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace KurisuBot
 {
+    public enum UserBalance
+    {
+        QuizTokens,
+        Coins,
+        RDust,
+        SRDust,
+        SSRDust,
+        URDust
+    }
+
     public class KurisuUser
     {
         public long Id { get; set; }
         public string Username { get; set; }
         public KurisuUserSettings Settings { get; set; }
         public DateTime LastQuizRegen { get; set; }
+        public int Pity { get; set; }
 
-        private int _coins;
-        private int _dustR;
-        private int _dustSR;
-        private int _dustSSR;
-        private int _dustUR;
         private int _quizTokens;
+        private int _coins;
+        private int _rDust;
+        private int _srDust;
+        private int _ssrDust;
+        private int _urDust;
 
         public KurisuUser() { }
 
@@ -28,6 +40,117 @@ namespace KurisuBot
             Username = username;
             Settings = new();
             LastQuizRegen = DateTime.UtcNow;
+        }
+
+        public int GetBalance(UserBalance balance)
+        {
+            if(balance is UserBalance.QuizTokens)
+            {
+                CheckQuizTimer();
+            }
+
+            return balance switch
+            {
+                UserBalance.QuizTokens => _quizTokens,
+                UserBalance.Coins => _coins,
+                UserBalance.RDust => _rDust,
+                UserBalance.SRDust => _srDust,
+                UserBalance.SSRDust => _ssrDust,
+                UserBalance.URDust => _urDust,
+                _ => _coins
+            };
+        }
+
+        public void SetBalance(UserBalance balance, int amount, bool markDirty = true)
+        {
+            amount = Math.Max(amount, 0);
+
+            switch(balance)
+            {
+                case UserBalance.QuizTokens: _quizTokens = amount; break;
+                case UserBalance.Coins: _coins = amount; break;
+                case UserBalance.RDust: _rDust = amount; break;
+                case UserBalance.SRDust: _srDust = amount; break;
+                case UserBalance.SSRDust: _ssrDust = amount; break;
+                case UserBalance.URDust: _urDust = amount; break;
+            }
+
+            if (markDirty)
+            {
+                KurisuUserCache.MarkUserDirty(this);
+            }
+        }
+
+        public bool ModifyBalance(UserBalance balance, OperationType operation, int amount)
+        {
+            int modifiedBalance = GetBalance(balance);
+
+            switch(operation)
+            {
+                case OperationType.Add: modifiedBalance += amount; break;
+                case OperationType.Subtract: modifiedBalance -= amount; break;
+                case OperationType.Multiply: modifiedBalance *= amount; break;
+                case OperationType.Divide:
+                    if(amount != 0)
+                    {
+                        modifiedBalance /= amount;
+                    }
+
+                    break;
+                case OperationType.Set: modifiedBalance = amount; break;
+            }
+
+            if(modifiedBalance < 0)
+            {
+                return false;
+            }
+
+            SetBalance(balance, modifiedBalance);
+
+            return true;
+        }
+
+        public TimeSpan GetNextQuizRegen()
+        {
+            DateTime now = DateTime.Now;
+            int maxQuizTokens = Settings.MaxQuizTokens;
+            int quizTokenRefreshInterval = Settings.QuizTokenRefreshInterval;
+
+            if(_quizTokens >= maxQuizTokens)
+            {
+                return TimeSpan.Zero;
+            }
+
+            DateTime nextRegen = LastQuizRegen.AddMinutes(quizTokenRefreshInterval);
+
+            while(nextRegen <= now)
+            {
+                nextRegen = nextRegen.AddMinutes(quizTokenRefreshInterval);
+            }
+
+            return nextRegen - now;
+        }
+
+        private void CheckQuizTimer()
+        {
+            int maxQuizTokens = Settings.MaxQuizTokens;
+
+            if(_quizTokens >= maxQuizTokens)
+            {
+                return;
+            }
+
+            DateTime now = DateTime.Now;
+            TimeSpan elapsedTime = now - LastQuizRegen;
+            int quizTokenRefreshInterval = Settings.QuizTokenRefreshInterval;
+            int intervals = (int)(elapsedTime.TotalMinutes / quizTokenRefreshInterval);
+
+            if(intervals > 0)
+            {
+                int newTokensAmount = Math.Min(_quizTokens + intervals, maxQuizTokens);
+                SetBalance(UserBalance.QuizTokens, newTokensAmount);
+                LastQuizRegen = LastQuizRegen.AddMinutes(intervals * quizTokenRefreshInterval);
+            }
         }
     }
 
@@ -43,7 +166,298 @@ namespace KurisuBot
         public int QuizRewardMax { get; set; } = 30;
 
         public string BinderDescription { get; set; } = "A collection of cards.";
-        public string CardCollectionEmbedColor { get; set; } = "4FC1E8";
+        public string BinderEmbedColor { get; set; } = "4FC1E8";
         public string WalletEmbedColor { get; set; } = "4FC1E8";
+    }
+
+    public static class KurisuUserSettingsSerializer
+    {
+        private static readonly JsonSerializerOptions _options = new()
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        public static string Serialize(KurisuUserSettings settings)
+        {
+            return JsonSerializer.Serialize(settings, _options);
+        }
+
+        public static KurisuUserSettings Deserialize(string json)
+        {
+            return JsonSerializer.Deserialize<KurisuUserSettings>(json, _options) ?? new KurisuUserSettings();
+        }
+    }
+
+    public static class KurisuUserCache
+    {
+        private static readonly int _saveLoopInterval = 1; // Every n minutes, update DB
+        private static readonly int _cacheExpirationTime = 6; // After n hours of no interaction, remove
+
+        private static string _connectionString = "";
+        private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+        private static HashSet<KurisuUser> _dirtyUsers = new();
+
+        private static CancellationTokenSource _cts;
+        private static readonly object _lock = new();
+
+        public static async Task InitializeAsync(string connectionString)
+        {
+            _connectionString = connectionString;
+            _ = StartSaveLoopAsync();
+        }
+
+        public static async Task<KurisuUser> GetUserAsync(long id)
+        {
+            if(!_cache.TryGetValue(id, out KurisuUser user))
+            {
+                user = await LoadUserDataAsync(id) ?? await CreateUserAsync(id);
+
+                _cache.Set(id, user, new MemoryCacheEntryOptions
+                {
+                    SlidingExpiration = TimeSpan.FromHours(_cacheExpirationTime)
+                });
+            }
+
+            return user;
+        }
+
+        public static async Task<KurisuUser> GetUserAsync(CommandContext ctx)
+        {
+            return await GetUserAsync((long)ctx.User.Id);
+        }
+
+        public static void MarkUserDirty(KurisuUser user)
+        {
+            lock(_lock)
+            {
+                _dirtyUsers.Add(user);
+            }
+        }
+
+        public static async Task StartSaveLoopAsync()
+        {
+            _cts = new();
+
+            TimeSpan interval = TimeSpan.FromMinutes(_saveLoopInterval);
+            DateTime nextRun = DateTime.UtcNow + interval;
+            Console.WriteLine("[KurisuUserCache] Started save loop");
+
+            while(!_cts.IsCancellationRequested)
+            {
+                await SaveUsersDataAsync();
+
+                try
+                {
+                    await Task.Delay(interval, _cts.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        public static async Task StopSaveLoopAsync()
+        {
+            _cts.Cancel();
+            await SaveUsersDataAsync();
+            Console.WriteLine("[KurisuUserCache] Stopped save loop");
+        }
+
+        private static async Task<KurisuUser> CreateUserAsync(long id)
+        {
+            DiscordUser dUser = await Program.Client.GetUserAsync((ulong)id);
+            string username = dUser.Username;
+            KurisuUser user = new KurisuUser(id, username);
+            MarkUserDirty(user);
+
+            Console.WriteLine($"[KurisuUserCache] Creating new user for '{username}' (ID: {id})");
+            return user;
+        }
+
+        private static async Task<KurisuUser?> LoadUserDataAsync(long id)
+        {
+            try
+            {
+                await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                const string sqlQuery = @"
+                    SELECT id,
+                           settings,
+                           quiztokens,
+                           lastquizregen,
+                           pity,
+                           coins,
+                           rdust,
+                           srdust,
+                           ssrdust,
+                           urdust
+                    FROM userdata
+                    WHERE id = @id
+                ";
+
+                await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
+
+                command.Parameters.AddWithValue("@id", id);
+
+                await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+
+                if(await reader.ReadAsync())
+                {
+                    DiscordUser dUser = await Program.Client.GetUserAsync((ulong)id);
+                    string username = dUser.Username;
+                    KurisuUser user = new KurisuUser(id, username);
+
+                    int settingsOrdinal = reader.GetOrdinal("settings");
+
+                    if(!reader.IsDBNull(settingsOrdinal))
+                    {
+                        string settingsJson = reader.GetString(settingsOrdinal);
+                        user.Settings = KurisuUserSettingsSerializer.Deserialize(settingsJson);
+                    }
+
+                    user.LastQuizRegen = reader.GetDateTime(reader.GetOrdinal("lastquizregen"));
+                    user.Pity = reader.GetInt32(reader.GetOrdinal("pity"));
+                    user.SetBalance(UserBalance.QuizTokens, reader.GetInt32(reader.GetOrdinal("quiztokens")), false);
+                    user.SetBalance(UserBalance.Coins, reader.GetInt32(reader.GetOrdinal("coins")), false);
+                    user.SetBalance(UserBalance.RDust, reader.GetInt32(reader.GetOrdinal("rdust")), false);
+                    user.SetBalance(UserBalance.SRDust, reader.GetInt32(reader.GetOrdinal("srdust")), false);
+                    user.SetBalance(UserBalance.SSRDust, reader.GetInt32(reader.GetOrdinal("ssrdust")), false);
+                    user.SetBalance(UserBalance.URDust, reader.GetInt32(reader.GetOrdinal("urdust")), false);
+
+                    Console.WriteLine($"[KurisuUserCache] Loaded user '{username}' (ID: {id}) from Supabase");
+                    return user;
+                }
+
+                Console.WriteLine($"[KurisuUserCache] Error finding user with ID: {id} in Supabase");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KurisuUserCache] Error loading user data for ID: {id}: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static async Task SaveUsersDataAsync()
+        {
+            HashSet<KurisuUser> users;
+
+            lock(_lock)
+            {
+                users = [.. _dirtyUsers];
+                _dirtyUsers.Clear();
+            }
+
+            if(users.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    const string tempTableSQLQuery = @"
+                        CREATE TEMP TABLE temp_userdata (
+                            id BIGINT PRIMARY KEY,
+                            settings JSONB,
+                            quiztokens INT,
+                            lastquizregen TIMESTAMPTZ,
+                            pity INT,
+                            coins INT,
+                            rdust INT,
+                            srdust INT,
+                            ssrdust INT,
+                            urdust INT
+                        ) ON COMMIT DROP;    
+                    ";
+
+                    await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
+                    await tempTableCommand.ExecuteNonQueryAsync();
+                    NpgsqlBinaryImporter? writer = null;
+
+                    try
+                    {
+                        writer = await connection.BeginBinaryImportAsync(@"
+                            COPY temp_userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust)
+                            FROM STDIN (FORMAT BINARY)
+                        ");
+
+                        foreach(KurisuUser user in users)
+                        {
+                            await writer.StartRowAsync();
+                            await writer.WriteAsync(user.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
+                            await writer.WriteAsync(KurisuUserSettingsSerializer.Serialize(user.Settings), NpgsqlTypes.NpgsqlDbType.Jsonb);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.QuizTokens), NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.LastQuizRegen, NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                            await writer.WriteAsync(user.Pity, NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.Coins), NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.RDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.SRDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.SSRDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.URDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                        }
+
+                        await writer.CompleteAsync();
+                    }
+                    catch
+                    {
+                        if(writer != null)
+                        {
+                            try
+                            {
+                                await writer.CloseAsync();
+                            }
+                            catch { }
+                        }
+
+                        throw;
+                    }
+                    finally
+                    {
+                        writer?.Dispose();
+                    }
+
+                    const string upsertTableSQLQuery = @"
+                        INSERT INTO userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust) 
+                        SELECT id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust
+                        FROM temp_userdata
+                        ON CONFLICT (id) DO UPDATE SET
+                            settings        = EXCLUDED.settings,
+                            quiztokens      = EXCLUDED.quiztokens,
+                            lastquizregen   = EXCLUDED.lastquizregen,
+                            pity            = EXCLUDED.pity,
+                            coins           = EXCLUDED.coins,
+                            rdust           = EXCLUDED.rdust,
+                            srdust          = EXCLUDED.srdust,
+                            ssrdust         = EXCLUDED.ssrdust,
+                            urdust          = EXCLUDED.urdust
+                    ";
+
+                    await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);
+                    await upsertTableCommand.ExecuteNonQueryAsync();
+                    await transaction.CommitAsync();
+                    Console.WriteLine($"[KurisuUserCache] Saved {users.Count} users' data");
+                }
+                catch
+                {
+                    Console.WriteLine($"[KurisuUserCache] Rolling back transaction...");
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"[KurisuUserCache] Error saving {users.Count} users' data: {ex.Message}");
+            }
+        }
     }
 }

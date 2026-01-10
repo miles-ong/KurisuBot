@@ -14,40 +14,22 @@ namespace KurisuBot
         {
             await ctx.DeferResponseAsync();
 
-            List<KurisuAnime> animes = KurisuAnimeCache.SearchByTitle(title);
+            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
 
-            if (!animes.Any())
+            KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
+
+            if (anime == null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent($"No animes exist in the database with a title similar to '{title}'"));
+                    .WithContent($"*No anime exists in the database with a title similar to **'{title}'***"));
 
                 return;
             }
 
-            KurisuAnime anime = animes[0];
+            DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime, user.Username);
 
-            DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
-                .WithTitle(anime.Title)
-                .WithDescription(anime.Description);
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder()
+            await ctx.EditResponseAsync(new DiscordMessageBuilder()
                 .AddEmbed(embed));
-        }
-
-        [Command("add")]
-        public async Task KurisuAnimeAddCommand(
-            CommandContext ctx,
-            [Parameter("title")] string title,
-            [Parameter("description")] string description,
-            [Parameter("imagekey")] string? imagekey = null
-        )
-        {
-            await ctx.DeferResponseAsync();
-
-            KurisuAnime anime = await KurisuAnimeCache.Add(title, description, imagekey);
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                .WithContent($"Successfully added '{anime.Title}' to the database!"));
         }
 
         [Command("id")]
@@ -58,89 +40,77 @@ namespace KurisuBot
         {
             await ctx.DeferResponseAsync();
 
-            List<KurisuAnime> animes = KurisuAnimeCache.SearchByTitle(title);
+            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
 
-            if(!animes.Any())
+            KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
+
+            if (anime != null)
             {
                 await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent($"No animes exist in the database with a title similar to '{title}'"));
+                    .WithContent($"*No anime exists in the database with a title similar to **'{title}'***"));
 
                 return;
             }
 
-            KurisuAnime anime = animes[0];
+            DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(
+                anime,
+                requestUsername: user.Username,
+                displayId: true,
+                displayDescription: false,
+                displayImage: false,
+                displayCharactersCount: false
+            );
 
-            DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
-                .WithTitle(anime.Title)
-                .WithDescription($"**ID:** {anime.Id}");
-
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder()
+            await ctx.EditResponseAsync(new DiscordMessageBuilder()
                 .AddEmbed(embed));
         }
 
-        [Command("update")]
-        public async Task KurisuAnimeUpdateCommand(
+        [Command("add")]
+        public async Task KurisuAnimeAddCommand(
             CommandContext ctx,
-            [Parameter("id")] int id,
-            [Parameter("new-title")] string? newTitle = null,
-            [Parameter("new-description")] string? newDescription = null,
-            [Parameter("new-image-key")] string? newImageKey = null
+            [Parameter("title")] string title,
+            [Parameter("description")] string description,
+            [Parameter("imagekey")] int? imageKey = null
         )
         {
             await ctx.DeferResponseAsync();
 
-            KurisuAnime? anime = KurisuAnimeCache.SearchByID(id);
+            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
 
-            if (anime == null)
+            if(KurisuAnimeCache.CheckForAnimeTitleSimilarity(title) is (int score, KurisuAnime similarAnime))
             {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent($"No anime exists in the database with the ID: {id}"));
+                DiscordEmbedBuilder confirmationEmbed = UniversalEmbedBuilder.BuildConfirmationEmbed(
+                    user.Username,
+                    ConfirmationMessageType.AddAnimeToDatabase,
+                    $"**{title}** is similar to the following title:\n\n**{similarAnime.Title}**, **{score}% Match**\n\nWould you still like to add the anime?"
+                );
 
-                return;
-            }
+                TaskCompletionSource<bool> tcs = new();
 
-            string updateDescription = "";
-
-            if(newTitle != null)
-            {
-                if(await anime.SetTitle(newTitle))
+                ConfirmationMessageData confirmationData = new()
                 {
-                    updateDescription += $"**Title:** {newTitle}\n";
+                    Owner = user,
+                    Type = ConfirmationMessageType.AddAnimeToDatabase,
+                    CompletionSource = tcs
+                };
+
+                DiscordMessage confirmationMessage = await UniversalEventHandler.RegisterAndSendConfirmationMessageAsync(ctx, confirmationData, confirmationEmbed, false);
+
+                if(!await tcs.Task)
+                {
+                    return;
                 }
             }
 
-            if(newDescription != null)
-            {
-                if(await anime.SetDescription(newDescription))
-                {
-                    updateDescription += $"**Description:** {newDescription}\n";
-                }
-            }
+            KurisuAnime anime = await KurisuAnimeCache.AddAnimeAsync(title, description, imageKey);
 
-            if(newImageKey != null)
-            {
-                if(await anime.SetImageKey(newImageKey))
-                {
-                    updateDescription += $"**Image Key:** {newImageKey}\n";
-                }
-            }
-            
-            if(String.IsNullOrEmpty(updateDescription))
-            {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent("Please update at least 1 field of the requested anime!"));
+            await ctx.EditResponseAsync(new DiscordMessageBuilder()
+                .WithContent($"Successfully added **'{anime.Title}'** to the database!"));
 
-                return;
-            }
-            else
-            {
-                DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
-                    .WithTitle($"Updated Anime with ID: {id}")
-                    .WithDescription(updateDescription);
+            DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime, displayId: true);
 
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .AddEmbed(embed));
-            }
+            await ctx.Channel.SendMessageAsync(new DiscordMessageBuilder()
+                .AddEmbed(embed));
         }
     }
 }

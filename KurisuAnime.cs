@@ -9,10 +9,10 @@ namespace KurisuBot
         public int Id { get; private set; }
         public string Title { get; private set; } = "";
         public string Description { get; private set; } = "";
-        public string? ImageKey { get; private set; }
+        public int? ImageKey { get; private set; }
         public List<KurisuCharacter> Characters { get; private set; } = new();
 
-        public KurisuAnime(int id, string title, string description, string? imageKey = null)
+        public KurisuAnime(int id, string title, string description, int? imageKey = null)
         {
             Id = id;
             Title = title;
@@ -20,14 +20,37 @@ namespace KurisuBot
             ImageKey = imageKey;
         }
 
-        public async Task<bool> SetTitle(string newTitle)
+        public (int, KurisuCharacter)? CheckForCharacterNameSimilarity(string name, int similarityStrength = 60)
+        {
+            var results = Characters
+                .Select(character => new
+                {
+                    Character = character,
+                    Score = Fuzz.WeightedRatio(name.ToLower(), character.Name.ToLower())
+                })
+                .Where(x => x.Score > similarityStrength)
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            if(!results.Any())
+            {
+                return null;
+            }
+
+            int similarityScore = results.Select(x => x.Score).ToList().First();
+            KurisuCharacter character = results.Select(x => x.Character).ToList().First();
+
+            return (similarityScore, character);
+        }
+
+        public async Task<bool> SetTitleAsync(string newTitle)
         {
             string oldTitle = Title;
             Title = newTitle;
 
             try
             {
-                await KurisuAnimeCache.UpdateAnime(this);
+                await KurisuAnimeCache.UpdateAnimeAsync(this);
                 return true;
             }
             catch
@@ -37,14 +60,14 @@ namespace KurisuBot
             }
         }
 
-        public async Task<bool> SetDescription(string newDescription)
+        public async Task<bool> SetDescriptionAsync(string newDescription)
         {
             string oldDescription = Description;
             Description = newDescription;
 
             try
             {
-                await KurisuAnimeCache.UpdateAnime(this);
+                await KurisuAnimeCache.UpdateAnimeAsync(this);
                 return true;
             }
             catch
@@ -54,14 +77,14 @@ namespace KurisuBot
             }
         }
 
-        public async Task<bool> SetImageKey(string? newImageKey)
+        public async Task<bool> SetImageKeyAsync(int? newImageKey)
         {
-            string? oldImageKey = ImageKey;
+            int? oldImageKey = ImageKey;
             ImageKey = newImageKey;
 
             try
             {
-                await KurisuAnimeCache.UpdateAnime(this);
+                await KurisuAnimeCache.UpdateAnimeAsync(this);
                 return true;
             }
             catch
@@ -77,10 +100,10 @@ namespace KurisuBot
         private static string _connectionString = "";
         private static ConcurrentDictionary<int, KurisuAnime> _cache = new();
 
-        public static async Task Initialize(string connectionString)
+        public static async Task InitializeAsync(string connectionString)
         {
             _connectionString = connectionString;
-            await LoadAll();
+            await LoadAllAsync();
         }
 
         public static KurisuAnime? SearchByID(int id)
@@ -98,11 +121,11 @@ namespace KurisuBot
                 return new();
             }
 
-            var results = allAnime
+            List<KurisuAnime> results = allAnime
                 .Select(anime => new
                 {
                     Anime = anime,
-                    Score = Fuzz.PartialRatio(title.ToLower(), anime.Title.ToLower())
+                    Score = Fuzz.WeightedRatio(title.ToLower(), anime.Title.ToLower())
                 })
                 .Where(x => x.Score > 60)
                 .OrderByDescending(x => x.Score)
@@ -113,7 +136,44 @@ namespace KurisuBot
             return results;
         }
 
-        public static async Task<KurisuAnime> Add(string title, string description, string? imageKey = null)
+        public static KurisuAnime? SearchByTitleBestMatch(string title, int similarityStrength = 60)
+        {
+            return _cache.Values
+                .Select(anime => new
+                {
+                    Anime = anime,
+                    Score = Fuzz.WeightedRatio(title.ToLower(), anime.Title.ToLower())
+                })
+                .Where(x => x.Score >= similarityStrength)
+                .OrderByDescending(x => x.Score)
+                .Select(x => x.Anime)
+                .FirstOrDefault();
+        }
+
+        public static (int, KurisuAnime)? CheckForAnimeTitleSimilarity(string title, int similarityStrength = 60)
+        {
+            var results = _cache.Values
+                .Select(anime => new
+                {
+                    Anime = anime,
+                    Score = Fuzz.WeightedRatio(title.ToLower(), anime.Title.ToLower())
+                })
+                .Where(x => x.Score >= similarityStrength)
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            if(!results.Any())
+            {
+                return null;
+            }
+
+            int similarityScore = results.Select(x => x.Score).ToList().First();
+            KurisuAnime anime = results.Select(x => x.Anime).ToList().First();
+
+            return (similarityScore, anime);
+        }
+
+        public static async Task<KurisuAnime> AddAnimeAsync(string title, string description, int? imageKey = null)
         {
             try
             {
@@ -129,15 +189,14 @@ namespace KurisuBot
                 await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
                 command.Parameters.AddWithValue("@title", title);
                 command.Parameters.AddWithValue("@description", description);
-                command.Parameters.AddWithValue("@imagekey", imageKey ?? (object)DBNull.Value);
-
+                command.Parameters.AddWithValue("@imagekey", imageKey.HasValue ? imageKey.Value : DBNull.Value);
                 long idLong = (long)(await command.ExecuteScalarAsync())!;
                 int id = (int)idLong;
 
                 KurisuAnime anime = new KurisuAnime(id, title, description, imageKey);
                 _cache.TryAdd(id, anime);
 
-                Console.WriteLine($"[KurisuAnimeCache] Added anime '{title}' with ID {id}");
+                Console.WriteLine($"[KurisuAnimeCache] Added anime '{title}' (ID: {anime.Id})");
                 return anime;
             }
             catch(Exception ex)
@@ -147,7 +206,7 @@ namespace KurisuBot
             }
         }
 
-        public static async Task UpdateAnime(KurisuAnime anime)
+        public static async Task UpdateAnimeAsync(KurisuAnime anime)
         {
             try
             {
@@ -166,7 +225,7 @@ namespace KurisuBot
                 command.Parameters.AddWithValue("@id", anime.Id);
                 command.Parameters.AddWithValue("@title", anime.Title);
                 command.Parameters.AddWithValue("@description", anime.Description);
-                command.Parameters.AddWithValue("@imagekey", anime.ImageKey ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@imagekey", anime.ImageKey.HasValue ? anime.ImageKey.Value : DBNull.Value);
                 int rowsAffected = await command.ExecuteNonQueryAsync();
 
                 if(rowsAffected > 0)
@@ -175,7 +234,7 @@ namespace KurisuBot
                 }
                 else
                 {
-                    Console.WriteLine($"[KurisuAnimeCache] Warning: No anime found with ID {anime.Id}");
+                    Console.WriteLine($"[KurisuAnimeCache] No anime found with ID: {anime.Id}");
                 }
             }
             catch (Exception ex)
@@ -185,7 +244,7 @@ namespace KurisuBot
             }
         }
 
-        private static async Task LoadAll()
+        private static async Task LoadAllAsync()
         {
             try
             {
@@ -209,9 +268,9 @@ namespace KurisuBot
                     string title = reader.GetString(reader.GetOrdinal("title"));
                     string description = reader.GetString(reader.GetOrdinal("description"));
                     int imageKeyOrdinal = reader.GetOrdinal("imagekey");
-                    string? imageKey = reader.IsDBNull(imageKeyOrdinal)
+                    int? imageKey = reader.IsDBNull(imageKeyOrdinal)
                         ? null
-                        : reader.GetString(imageKeyOrdinal);
+                        : reader.GetInt32(imageKeyOrdinal);
 
                     KurisuAnime anime = new KurisuAnime(id, title, description, imageKey);
                     _cache.TryAdd(id, anime);
