@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using DSharpPlus.Commands;
+using System.Text;
 
 namespace KurisuBot
 {

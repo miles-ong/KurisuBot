@@ -11,8 +11,10 @@ namespace KurisuBot
         Purchase,
         Sell,
         Trade,
+        AddAnimeToDatabase,
         AddCharacterToDatabase,
-        AddAnimeToDatabase
+        UpdateAnimeInDatabase,
+        UpdateCharacterInDatabase
     }
 
     public struct ConfirmationMessageData

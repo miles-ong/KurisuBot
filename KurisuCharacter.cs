@@ -50,6 +50,7 @@ namespace KurisuBot
             try
             {
                 await KurisuCharacterCache.UpdateCharacterAsync(this);
+                anime.Characters.Add(this);
                 return true;
             }
             catch
@@ -72,6 +73,7 @@ namespace KurisuBot
             try
             {
                 await KurisuCharacterCache.UpdateCharacterAsync(this);
+                anime.Characters.Remove(this);
                 return true;
             }
             catch
@@ -278,7 +280,7 @@ namespace KurisuBot
                     }
                 }
 
-                Console.WriteLine($"[KurisuCharacterCache] Loaded {_cache.Count} animes from Supabase");
+                Console.WriteLine($"[KurisuCharacterCache] Loaded {_cache.Count} characters from Supabase");
             }
             catch (Exception ex)
             {

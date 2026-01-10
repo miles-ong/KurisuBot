@@ -18,15 +18,12 @@ namespace KurisuBot
 
             KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
 
-            if (anime == null)
+            if(!await KurisuHelper.HandleNullAnimeSearchAsync(ctx, anime, title))
             {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent($"*No anime exists in the database with a title similar to **'{title}'***"));
-
                 return;
             }
 
-            DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime, user.Username);
+            DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime!, user.Username);
 
             await ctx.EditResponseAsync(new DiscordMessageBuilder()
                 .AddEmbed(embed));
@@ -44,16 +41,13 @@ namespace KurisuBot
 
             KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
 
-            if (anime != null)
+            if(!await KurisuHelper.HandleNullAnimeSearchAsync(ctx, anime, title))
             {
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                    .WithContent($"*No anime exists in the database with a title similar to **'{title}'***"));
-
                 return;
             }
 
             DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(
-                anime,
+                anime!,
                 requestUsername: user.Username,
                 displayId: true,
                 displayDescription: false,
@@ -77,29 +71,11 @@ namespace KurisuBot
 
             KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
 
-            if(KurisuAnimeCache.CheckForAnimeTitleSimilarity(title) is (int score, KurisuAnime similarAnime))
+            KurisuAnime? similarAnime = KurisuAnimeCache.SearchByTitleBestMatch(title);
+
+            if(!await KurisuHelper.ConfirmAnimeNameSimilarityAsync(ctx, user, title, ConfirmationMessageType.AddAnimeToDatabase))
             {
-                DiscordEmbedBuilder confirmationEmbed = UniversalEmbedBuilder.BuildConfirmationEmbed(
-                    user.Username,
-                    ConfirmationMessageType.AddAnimeToDatabase,
-                    $"**{title}** is similar to the following title:\n\n**{similarAnime.Title}**, **{score}% Match**\n\nWould you still like to add the anime?"
-                );
-
-                TaskCompletionSource<bool> tcs = new();
-
-                ConfirmationMessageData confirmationData = new()
-                {
-                    Owner = user,
-                    Type = ConfirmationMessageType.AddAnimeToDatabase,
-                    CompletionSource = tcs
-                };
-
-                DiscordMessage confirmationMessage = await UniversalEventHandler.RegisterAndSendConfirmationMessageAsync(ctx, confirmationData, confirmationEmbed, false);
-
-                if(!await tcs.Task)
-                {
-                    return;
-                }
+                return;
             }
 
             KurisuAnime anime = await KurisuAnimeCache.AddAnimeAsync(title, description, imageKey);
@@ -111,6 +87,85 @@ namespace KurisuBot
 
             await ctx.Channel.SendMessageAsync(new DiscordMessageBuilder()
                 .AddEmbed(embed));
+        }
+
+        [Command("edit")]
+        public class KurisuAnimeEditCommands
+        {
+            [Command("title")]
+            public async Task KurisuAnimeEditTitleCommand(
+                CommandContext ctx,
+                [Parameter("id")] int id,
+                [Parameter("new-title")] string newTitle
+            )
+            {
+                await ctx.DeferResponseAsync();
+
+                KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+
+                KurisuAnime? anime = KurisuAnimeCache.SearchByID(id);
+
+                if(!await KurisuHelper.HandleNullAnimeSearchAsync(ctx, anime, id: id))
+                {
+                    return;
+                }
+
+                if(!await KurisuHelper.ConfirmAnimeNameSimilarityAsync(ctx, user, newTitle, ConfirmationMessageType.UpdateAnimeInDatabase))
+                {
+                    return;
+                }
+
+                if(!await anime!.SetTitleAsync(newTitle))
+                {
+                    await ctx.EditResponseAsync(new DiscordMessageBuilder()
+                        .WithContent($"Failed to edit **'{anime.Title}' (ID: {anime.Id})**..."));
+
+                    return;
+                }
+
+                await ctx.EditResponseAsync(new DiscordMessageBuilder()
+                    .WithContent($"Successfully edited **'{anime.Title}'** (ID: {anime.Id})**!"));
+
+                DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime, displayId: true);
+
+                await ctx.Channel.SendMessageAsync(new DiscordMessageBuilder()
+                    .AddEmbed(embed));
+            }
+
+            [Command("description")]
+            public async Task KurisuAnimeEditDescriptionCommand(
+                CommandContext ctx,
+                [Parameter("id")] int id,
+                [Parameter("new-description")] string newDescription
+            )
+            {
+                await ctx.DeferResponseAsync();
+
+                KurisuAnime? anime = KurisuAnimeCache.SearchByID(id);
+
+                if(!await KurisuHelper.HandleNullAnimeSearchAsync(ctx, anime, id: id))
+                {
+                    return;
+                }
+
+                if(anime!.Description.Equals(newDescription))
+                {
+                    await ctx.EditResponseAsync(new DiscordMessageBuilder()
+                        .WithContent($"Failed to edit **'{anime.Title}' (ID: {anime.Id})**, the new description must differ from the old description!"));
+
+                    return;
+                }
+
+                await anime.SetDescriptionAsync(newDescription);
+
+                await ctx.EditResponseAsync(new DiscordMessageBuilder()
+                    .WithContent($"Successfully edited **'{anime.Title}'** (ID: {anime.Id})**!"));
+
+                DiscordEmbedBuilder embed = KurisuAnimeEmbedBuilder.BuildAnimeInformationEmbed(anime, displayId: true);
+
+                await ctx.Channel.SendMessageAsync(new DiscordMessageBuilder()
+                    .AddEmbed(embed));
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ namespace KurisuBot
             StringBuilder sb = new();
 
             if (displayId) sb.AppendLine($"**ID:** {character.Id}");
-            if (displayAnime) sb.AppendLine($"**Anime:** {string.Join(", ", character.Animes)}");
+            if (displayAnime) sb.AppendLine($"**Anime:** {string.Join(", ", character.Animes.Select(a => a.Title)).ToString()}");
             if (displayVariantsCount) sb.AppendLine($"**Variants:** {character.Variants}");
 
             DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
