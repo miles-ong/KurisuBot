@@ -202,10 +202,11 @@ namespace KurisuBot
         private static CancellationTokenSource _cts;
         private static readonly object _lock = new();
 
-        public static async Task InitializeAsync(string connectionString)
+        public static void Initialize(string connectionString)
         {
             _connectionString = connectionString;
             _ = StartSaveLoopAsync();
+            Console.WriteLine("[KurisuUserCache] Initialized");
         }
 
         public static async Task<KurisuUser> GetUserAsync(long id)

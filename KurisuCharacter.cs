@@ -110,6 +110,7 @@ namespace KurisuBot
         {
             _connectionString = connectionString;
             await LoadAllAsync();
+            Console.WriteLine("[KurisuCharacterCache] Initialized");
         }
 
         public static KurisuCharacter? SearchByID(int id)

@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace KurisuBot
+﻿namespace KurisuBot
 {
     public enum CardRarity
     {

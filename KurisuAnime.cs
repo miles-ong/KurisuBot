@@ -104,6 +104,7 @@ namespace KurisuBot
         {
             _connectionString = connectionString;
             await LoadAllAsync();
+            Console.WriteLine("[KurisuAnimeCache] Initialized");
         }
 
         public static KurisuAnime? SearchByID(int id)

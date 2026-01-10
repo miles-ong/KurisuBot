@@ -19,7 +19,7 @@ namespace KurisuBot
 
             await KurisuAnimeCache.InitializeAsync(reader.Supabase.ConnectionString);
             await KurisuCharacterCache.InitializeAsync(reader.Supabase.ConnectionString);
-            await KurisuUserCache.InitializeAsync(reader.Supabase.ConnectionString);
+            KurisuUserCache.Initialize(reader.Supabase.ConnectionString);
 
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
                 reader.Discord.Token,
