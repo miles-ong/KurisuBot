@@ -1,6 +1,6 @@
 ﻿using DSharpPlus.Entities;
 
-namespace KurisuBot
+namespace KurisuBot.EmbedBuilders
 {
     public static class KurisuQuizEmbedBuilder
     {

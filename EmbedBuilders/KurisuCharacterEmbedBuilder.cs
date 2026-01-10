@@ -1,7 +1,7 @@
 ﻿using DSharpPlus.Entities;
 using System.Text;
 
-namespace KurisuBot
+namespace KurisuBot.EmbedBuilders
 {
     public static class KurisuCharacterEmbedBuilder
     {

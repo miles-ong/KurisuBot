@@ -1,5 +1,7 @@
 ﻿using DSharpPlus.Commands;
 using DSharpPlus.Entities;
+using KurisuBot.EmbedBuilders;
+using KurisuBot.EventHandlers;
 
 namespace KurisuBot
 {

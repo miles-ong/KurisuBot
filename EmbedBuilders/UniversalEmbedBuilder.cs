@@ -1,6 +1,7 @@
 ﻿using DSharpPlus.Entities;
+using KurisuBot.EventHandlers;
 
-namespace KurisuBot
+namespace KurisuBot.EmbedBuilders
 {
     public static class UniversalEmbedBuilder
     {

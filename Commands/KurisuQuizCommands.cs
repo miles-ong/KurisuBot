@@ -1,6 +1,7 @@
 ﻿using DSharpPlus.Commands;
+using KurisuBot.EventHandlers;
 
-namespace KurisuBot
+namespace KurisuBot.Commands
 {
     [Command("quiz")]
     public class KurisuQuizCommands

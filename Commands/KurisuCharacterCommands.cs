@@ -1,7 +1,9 @@
 ﻿using DSharpPlus.Commands;
 using DSharpPlus.Entities;
+using KurisuBot.EmbedBuilders;
+using KurisuBot.EventHandlers;
 
-namespace KurisuBot
+namespace KurisuBot.Commands
 {
     [Command("character")]
     public class KurisuCharacterCommands

@@ -2,9 +2,10 @@
 using DSharpPlus.Commands;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using KurisuBot.EmbedBuilders;
 using System.Collections.Concurrent;
 
-namespace KurisuBot
+namespace KurisuBot.EventHandlers
 {
     public enum ConfirmationMessageType
     {
