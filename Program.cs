@@ -21,6 +21,7 @@ namespace KurisuBot
 
             await KurisuAnimeCache.InitializeAsync(reader.Supabase.ConnectionString);
             await KurisuCharacterCache.InitializeAsync(reader.Supabase.ConnectionString);
+            await KurisuCardBlueprintCache.InitializeAsync(reader.Supabase.ConnectionString);
             KurisuUserCache.Initialize(reader.Supabase.ConnectionString);
             await AniListHook.InitializeAsync();
 

@@ -60,9 +60,9 @@ namespace KurisuBot
             {
                 Dictionary<QuizDifficulty, float> multipliers = new()
                 {
-                    { QuizDifficulty.Easy, 1f },
-                    { QuizDifficulty.Medium, 1.5f },
-                    { QuizDifficulty.Hard, 2f }
+                    { QuizDifficulty.Easy, 1.5f },
+                    { QuizDifficulty.Medium, 2f },
+                    { QuizDifficulty.Hard, 3f }
                 };
 
                 reward = (int)(reward * multipliers[Difficulty]);

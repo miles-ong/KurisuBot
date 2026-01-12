@@ -25,7 +25,7 @@ namespace KurisuBot
         public DateTime LastQuizRegen { get; set; }
         public int Pity { get; set; }
 
-        private int _quizTokens;
+        private int _quizTokens = 10;
         private int _coins;
         private int _rDust;
         private int _srDust;
@@ -192,14 +192,14 @@ namespace KurisuBot
 
     public static class KurisuUserCache
     {
-        private static readonly int _saveLoopInterval = 1; // Every n minutes, update DB
+        private static readonly int _saveLoopInterval = 5; // Every n minutes, update DB
         private static readonly int _cacheExpirationTime = 6; // After n hours of no interaction, remove
 
         private static string _connectionString = "";
         private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
         private static HashSet<KurisuUser> _dirtyUsers = new();
 
-        private static CancellationTokenSource _cts;
+        private static CancellationTokenSource _cts = new();
         private static readonly object _lock = new();
 
         public static void Initialize(string connectionString)
@@ -353,7 +353,7 @@ namespace KurisuBot
                 _dirtyUsers.Clear();
             }
 
-            if(users.Count == 0)
+            if(!users.Any())
             {
                 return;
             }

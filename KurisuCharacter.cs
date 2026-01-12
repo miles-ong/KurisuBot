@@ -10,9 +10,9 @@ namespace KurisuBot
         public string Name { get; private set; }
         public List<KurisuAnime> Animes { get; private set; }
         public int? ImageKey { get; private set; }
-        public int Variants { get; set; }
+        public List<KurisuCardBlueprint> Variants { get; private set; } = new();
 
-        public KurisuCharacter(int id, string name, List<KurisuAnime> animes, int? imageKey = null)
+        public KurisuCharacter(int id, string name, List<KurisuAnime> animes, int? imageKey)
         {
             Id = id;
             Name = name;
@@ -99,6 +99,30 @@ namespace KurisuBot
                 return false;
             }
         }
+
+        public bool AddVariant(KurisuCardBlueprint cardBlueprint)
+        {
+            if(Variants.Contains(cardBlueprint) || cardBlueprint.Character != this)
+            {
+                return false;
+            }
+
+            Variants.Add(cardBlueprint);
+
+            return true;
+        }
+
+        public bool RemoveVariant(KurisuCardBlueprint cardBlueprint)
+        {
+            if(!Variants.Contains(cardBlueprint))
+            {
+                return false;
+            }
+
+            Variants.Remove(cardBlueprint);
+
+            return true;
+        }
     }
 
     public static class KurisuCharacterCache
@@ -181,12 +205,12 @@ namespace KurisuBot
                 _cache.TryAdd(id, character);
                 anime.Characters.Add(character);
 
-                Console.WriteLine($"[KurisuAnimeCharacter] Added character '{name}' (ID: {character.Id})");
+                Console.WriteLine($"[KurisuAnimeCharacter] Added character '{name}' (ID: {character.Id}) to Supabase");
                 return character;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[KurisuAnimeCharacter] Error adding character: {ex.Message}");
+                Console.WriteLine($"[KurisuAnimeCharacter] Error adding character to Supabase: {ex.Message}");
                 throw;
             }
         }
@@ -200,9 +224,9 @@ namespace KurisuBot
 
                 const string sqlQuery = @"
                     UPDATE character
-                    SET name = @name,
-                        animeids = @animeids,
-                        imagekey = @imagekey
+                    SET name        = @name,
+                        animeids    = @animeids,
+                        imagekey    = @imagekey
                     WHERE id = @id
                 ";
 
@@ -215,16 +239,16 @@ namespace KurisuBot
 
                 if (rowsAffected > 0)
                 {
-                    Console.WriteLine($"[KurisuCharacterCache] Updated character '{character.Name}' (ID: {character.Id})");
+                    Console.WriteLine($"[KurisuCharacterCache] Updated character '{character.Name}' (ID: {character.Id}) in Supabase");
                 }
                 else
                 {
-                    Console.WriteLine($"[KurisuCharacterCache] No character found with ID: {character.Id}");
+                    Console.WriteLine($"[KurisuCharacterCache] No character found with ID: {character.Id} in Supabase");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[KurisuCharacterCache] Error updating character: {ex.Message}");
+                Console.WriteLine($"[KurisuCharacterCache] Error updating character in Supabase: {ex.Message}");
                 throw;
             }
         }
@@ -266,6 +290,7 @@ namespace KurisuBot
                         if(anime == null)
                         {
                             Console.WriteLine($"[KurisuCharacterCache] No anime exists in Supabase with ID: {animeId}, removing character '{name}' (ID: {id}) from Supabase");
+                            // add delete code
                             continue;
                         }
 
