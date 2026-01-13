@@ -1,26 +1,49 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using Npgsql;
-using System.Collections.Concurrent;
+﻿using Npgsql;
 
 namespace KurisuBot
 {
     public class KurisuCard
     {
-        public int Id { get; private set; }
-        public int OwnerId { get; private set; }
+        public long Id { get; private set; }
+        public long OwnerId { get; private set; }
         public KurisuCardBlueprint Blueprint { get; private set; }
-        public int? ImageKey { get; private set; }
+        public DateTime TimeObtained { get; private set; }
+        public int? ImageKey { get; private set; } 
         public int? BorderId { get; private set; }
-        public int? OverlayId { get; private set; }
+        public int? OverlayId { get; private set; } 
 
-        public KurisuCard(int id, int ownerId, KurisuCardBlueprint blueprint, int? imageKey, int? borderId, int? overlayId)
+        public KurisuCard(
+            long id, 
+            long ownerId, 
+            KurisuCardBlueprint blueprint, 
+            DateTime timeObtained,
+            int? imageKey, 
+            int? borderId, 
+            int? overlayId
+        )
         {
             Id = id;
             OwnerId = ownerId;
             Blueprint = blueprint;
+            TimeObtained = timeObtained;
             ImageKey = imageKey;
             BorderId = borderId;
             OverlayId = overlayId;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if(obj is not KurisuCard other)
+            {
+                return false;
+            }
+
+            return Id == other.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
         }
     }
 
@@ -29,8 +52,8 @@ namespace KurisuBot
         private static readonly int _saveLoopInterval = 5; // Every n minutes, update DB
 
         private static string _connectionString = "";
-        private static ConcurrentDictionary<int, KurisuCard> _cache = new();
         private static HashSet<KurisuCard> _dirtyCards = new();
+        private static HashSet<KurisuCard> _deleteCards = new();
 
         private static CancellationTokenSource _cts = new();
         private static readonly object _lock = new();
@@ -38,7 +61,16 @@ namespace KurisuBot
         public static void Initialize(string connectionString)
         {
             _connectionString = connectionString;
+            _ = StartSaveLoopAsync();
             Console.WriteLine("[KurisuCardCache] Initialized");
+        }
+
+        public static void MarkCardDirty(KurisuCard card)
+        {
+            lock(_lock)
+            {
+                _dirtyCards.Add(card);
+            }
         }
 
         public static async Task StartSaveLoopAsync()
@@ -46,12 +78,11 @@ namespace KurisuBot
             _cts = new();
 
             TimeSpan interval = TimeSpan.FromMinutes(_saveLoopInterval);
-            DateTime nextRun = DateTime.UtcNow + interval;
             Console.WriteLine("[KurisuCardCache] Started save loop");
 
             while(!_cts.IsCancellationRequested)
             {
-                //
+                await SaveCardsDataAsync();
 
                 try
                 {
@@ -67,8 +98,87 @@ namespace KurisuBot
         public static async Task StopSaveLoopAsync()
         {
             _cts.Cancel();
-            //
+            await SaveCardsDataAsync();
             Console.WriteLine("[KurisuCardCache] Stopped save loop");
+        }
+
+        public static async Task<List<KurisuCard>> LoadUserCardsDataAsync(KurisuUser user)
+        {
+            List<KurisuCard> cards = new();
+            long ownerId = user.Id;
+
+            try
+            {
+                await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                const string sqlQuery = @"
+                    SELECT id,
+                           ownerid,
+                           blueprintid,
+                           timeobtained,
+                           imagekey,
+                           borderid,
+                           overlayid
+                    FROM carddata
+                    WHERE ownerid = @ownerid
+                ";
+
+                await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
+
+                command.Parameters.AddWithValue("@ownerid", ownerId);
+
+                await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    long id = reader.GetInt64(reader.GetOrdinal("id"));
+                    int blueprintId = reader.GetInt32(reader.GetOrdinal("blueprintid"));
+                    KurisuCardBlueprint? blueprint = KurisuCardBlueprintCache.SearchByID(blueprintId);
+
+                    if (blueprint == null)
+                    {
+                        Console.WriteLine($"[KurisuCardCache] No card blueprint found with ID: {blueprintId} in Supabase, removing card (ID: {id}) from Supabase...");
+                        continue;
+                    }
+
+                    DateTime timeObtained = reader.GetDateTime(reader.GetOrdinal("timeobtained"));
+
+                    int imageKeyOrdinal = reader.GetOrdinal("imagekey");
+                    int? imageKey = reader.IsDBNull(imageKeyOrdinal)
+                        ? null
+                        : reader.GetInt32(imageKeyOrdinal);
+
+                    int borderIdOrdinal = reader.GetOrdinal("borderid");
+                    int? borderId = reader.IsDBNull(borderIdOrdinal)
+                        ? null
+                        : reader.GetInt32(borderIdOrdinal);
+
+                    int overlayIdOrdinal = reader.GetOrdinal("overlayid");
+                    int? overlayId = reader.IsDBNull(overlayIdOrdinal)
+                        ? null
+                        : reader.GetInt32(overlayIdOrdinal);
+
+                    KurisuCard card = new KurisuCard(
+                        id,
+                        ownerId,
+                        blueprint,
+                        timeObtained,
+                        imageKey,
+                        borderId,
+                        overlayId
+                    );
+
+                    cards.Add(card);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KurisuCardCache] Error loading cards for user '{user.Username}' (ID: {ownerId}): {ex.Message}");
+            }
+
+            Console.WriteLine($"[KurisuCardCache] Successfully loaded {cards.Count} cards for user '{user.Username}' (ID: {ownerId})");
+            return cards;
         }
 
         private static async Task SaveCardsDataAsync()
@@ -95,6 +205,15 @@ namespace KurisuBot
                 try
                 {
                     const string tempTableSQLQuery = @"
+                        CREATE TEMP TABLE temp_carddata (
+                            id BIGINT PRIMARY KEY,
+                            ownerid BIGINT,
+                            blueprintid INT,
+                            timeobtained TIMESTAMPTZ,
+                            imagekey INT,
+                            borderid INT,
+                            overlayid INT
+                        ) ON COMMIT DROP;
                     ";
 
                     await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
@@ -104,11 +223,45 @@ namespace KurisuBot
                     try
                     {
                         writer = await connection.BeginBinaryImportAsync(@"
+                            COPY temp_carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
+                            FROM STDIN (FORMAT BINARY)
                         ");
 
                         foreach(KurisuCard card in cards)
                         {
+                            await writer.StartRowAsync();
+                            await writer.WriteAsync(card.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
+                            await writer.WriteAsync(card.OwnerId, NpgsqlTypes.NpgsqlDbType.Bigint);
+                            await writer.WriteAsync(card.Blueprint.Id, NpgsqlTypes.NpgsqlDbType.Integer);
 
+                            await writer.WriteAsync(DateTime.SpecifyKind(card.TimeObtained, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
+
+                            if(card.ImageKey.HasValue)
+                            {
+                                await writer.WriteAsync(card.ImageKey.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                            }
+                            else
+                            {
+                                await writer.WriteNullAsync();
+                            }
+
+                            if(card.BorderId.HasValue)
+                            {
+                                await writer.WriteAsync(card.BorderId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                            }
+                            else
+                            {
+                                await writer.WriteNullAsync();
+                            }
+
+                            if(card.OverlayId.HasValue)
+                            {
+                                await writer.WriteAsync(card.OverlayId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                            }
+                            else
+                            {
+                                await writer.WriteNullAsync();
+                            }
                         }
 
                         await writer.CompleteAsync();
@@ -132,6 +285,16 @@ namespace KurisuBot
                     }
 
                     const string upsertTableSQLQuery = @"
+                        INSERT INTO carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
+                        SELECT id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid
+                        FROM temp_carddata
+                        ON CONFLICT (id) DO UPDATE SET
+                            ownerid         = EXCLUDED.ownerid,
+                            blueprintid     = EXCLUDED.blueprintid,
+                            timeobtained    = EXCLUDED.timeobtained,
+                            imagekey        = EXCLUDED.imagekey,
+                            borderid        = EXCLUDED.borderid,
+                            overlayid       = EXCLUDED.overlayid
                     ";
 
                     await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);

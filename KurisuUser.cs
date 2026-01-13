@@ -9,6 +9,7 @@ namespace KurisuBot
 {
     public enum UserBalance
     {
+        Pity,
         QuizTokens,
         Coins,
         RDust,
@@ -21,25 +22,28 @@ namespace KurisuBot
     {
         public long Id { get; set; }
         public string Username { get; set; }
-        public KurisuUserSettings Settings { get; set; }
-        public DateTime LastQuizRegen { get; set; }
-        public int Pity { get; set; }
+        public KurisuUserSettings Settings { get; private set; }
+        public DateTime LastQuizRegen { get; private set; }
 
+        private int _pity = 0;
         private int _quizTokens = 10;
-        private int _coins;
-        private int _rDust;
-        private int _srDust;
-        private int _ssrDust;
-        private int _urDust;
+        private int _coins = 0;
+        private int _rDust = 0;
+        private int _srDust = 0;
+        private int _ssrDust = 0;
+        private int _urDust = 0;
 
-        public KurisuUser() { }
-
-        public KurisuUser(long id, string username)
+        public KurisuUser(
+            long id, 
+            string username, 
+            KurisuUserSettings settings,
+            DateTime lastQuizRegen
+        )
         {
             Id = id;
             Username = username;
-            Settings = new();
-            LastQuizRegen = DateTime.UtcNow;
+            Settings = settings;
+            LastQuizRegen = lastQuizRegen;
         }
 
         public int GetBalance(UserBalance balance)
@@ -51,6 +55,7 @@ namespace KurisuBot
 
             return balance switch
             {
+                UserBalance.Pity => _pity,
                 UserBalance.QuizTokens => _quizTokens,
                 UserBalance.Coins => _coins,
                 UserBalance.RDust => _rDust,
@@ -67,6 +72,7 @@ namespace KurisuBot
 
             switch(balance)
             {
+                case UserBalance.Pity: _pity = amount; break;
                 case UserBalance.QuizTokens: _quizTokens = amount; break;
                 case UserBalance.Coins: _coins = amount; break;
                 case UserBalance.RDust: _rDust = amount; break;
@@ -112,7 +118,8 @@ namespace KurisuBot
 
         public TimeSpan GetNextQuizRegen()
         {
-            DateTime now = DateTime.Now;
+            CheckQuizTimer();
+
             int maxQuizTokens = Settings.MaxQuizTokens;
             int quizTokenRefreshInterval = Settings.QuizTokenRefreshInterval;
 
@@ -123,12 +130,7 @@ namespace KurisuBot
 
             DateTime nextRegen = LastQuizRegen.AddMinutes(quizTokenRefreshInterval);
 
-            while(nextRegen <= now)
-            {
-                nextRegen = nextRegen.AddMinutes(quizTokenRefreshInterval);
-            }
-
-            return nextRegen - now;
+            return nextRegen - DateTime.UtcNow;
         }
 
         private void CheckQuizTimer()
@@ -140,7 +142,7 @@ namespace KurisuBot
                 return;
             }
 
-            DateTime now = DateTime.Now;
+            DateTime now = DateTime.UtcNow;
             TimeSpan elapsedTime = now - LastQuizRegen;
             int quizTokenRefreshInterval = Settings.QuizTokenRefreshInterval;
             int intervals = (int)(elapsedTime.TotalMinutes / quizTokenRefreshInterval);
@@ -151,6 +153,21 @@ namespace KurisuBot
                 SetBalance(UserBalance.QuizTokens, newTokensAmount);
                 LastQuizRegen = LastQuizRegen.AddMinutes(intervals * quizTokenRefreshInterval);
             }
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if(obj is not KurisuUser other)
+            {
+                return false;
+            }
+
+            return Id == other.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
         }
     }
 
@@ -242,7 +259,6 @@ namespace KurisuBot
             _cts = new();
 
             TimeSpan interval = TimeSpan.FromMinutes(_saveLoopInterval);
-            DateTime nextRun = DateTime.UtcNow + interval;
             Console.WriteLine("[KurisuUserCache] Started save loop");
 
             while(!_cts.IsCancellationRequested)
@@ -271,7 +287,14 @@ namespace KurisuBot
         {
             DiscordUser dUser = await Program.Client.GetUserAsync((ulong)id);
             string username = dUser.Username;
-            KurisuUser user = new KurisuUser(id, username);
+
+            KurisuUser user = new KurisuUser(
+                id, 
+                username,
+                new(),
+                DateTime.UtcNow
+            );
+
             MarkUserDirty(user);
 
             Console.WriteLine($"[KurisuUserCache] Creating new user for '{username}' (ID: {id})");
@@ -310,18 +333,22 @@ namespace KurisuBot
                 {
                     DiscordUser dUser = await Program.Client.GetUserAsync((ulong)id);
                     string username = dUser.Username;
-                    KurisuUser user = new KurisuUser(id, username);
 
                     int settingsOrdinal = reader.GetOrdinal("settings");
+                    KurisuUserSettings settings = reader.IsDBNull(settingsOrdinal)
+                        ? new()
+                        : KurisuUserSettingsSerializer.Deserialize(reader.GetString(settingsOrdinal));
 
-                    if(!reader.IsDBNull(settingsOrdinal))
-                    {
-                        string settingsJson = reader.GetString(settingsOrdinal);
-                        user.Settings = KurisuUserSettingsSerializer.Deserialize(settingsJson);
-                    }
+                    DateTime lastQuizRegen = DateTime.SpecifyKind(reader.GetDateTime(reader.GetOrdinal("lastquizregen")), DateTimeKind.Utc);
 
-                    user.LastQuizRegen = reader.GetDateTime(reader.GetOrdinal("lastquizregen"));
-                    user.Pity = reader.GetInt32(reader.GetOrdinal("pity"));
+                    KurisuUser user = new KurisuUser(
+                        id,
+                        username,
+                        settings,
+                        lastQuizRegen
+                    );
+
+                    user.SetBalance(UserBalance.Pity, reader.GetInt32(reader.GetOrdinal("pity")), false);
                     user.SetBalance(UserBalance.QuizTokens, reader.GetInt32(reader.GetOrdinal("quiztokens")), false);
                     user.SetBalance(UserBalance.Coins, reader.GetInt32(reader.GetOrdinal("coins")), false);
                     user.SetBalance(UserBalance.RDust, reader.GetInt32(reader.GetOrdinal("rdust")), false);
@@ -398,8 +425,8 @@ namespace KurisuBot
                             await writer.WriteAsync(user.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
                             await writer.WriteAsync(KurisuUserSettingsSerializer.Serialize(user.Settings), NpgsqlTypes.NpgsqlDbType.Jsonb);
                             await writer.WriteAsync(user.GetBalance(UserBalance.QuizTokens), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.LastQuizRegen, NpgsqlTypes.NpgsqlDbType.TimestampTz);
-                            await writer.WriteAsync(user.Pity, NpgsqlTypes.NpgsqlDbType.Integer);
+                            await writer.WriteAsync(DateTime.SpecifyKind(user.LastQuizRegen, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                            await writer.WriteAsync(user.GetBalance(UserBalance.Pity), NpgsqlTypes.NpgsqlDbType.Integer);
                             await writer.WriteAsync(user.GetBalance(UserBalance.Coins), NpgsqlTypes.NpgsqlDbType.Integer);
                             await writer.WriteAsync(user.GetBalance(UserBalance.RDust), NpgsqlTypes.NpgsqlDbType.Integer);
                             await writer.WriteAsync(user.GetBalance(UserBalance.SRDust), NpgsqlTypes.NpgsqlDbType.Integer);
