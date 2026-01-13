@@ -5,7 +5,7 @@ namespace KurisuBot
     public class KurisuCard
     {
         public long Id { get; private set; }
-        public long OwnerId { get; private set; }
+        public KurisuUser Owner { get; private set; }
         public KurisuCardBlueprint Blueprint { get; private set; }
         public DateTime TimeObtained { get; private set; }
         public int? ImageKey { get; private set; } 
@@ -14,7 +14,7 @@ namespace KurisuBot
 
         public KurisuCard(
             long id, 
-            long ownerId, 
+            KurisuUser owner, 
             KurisuCardBlueprint blueprint, 
             DateTime timeObtained,
             int? imageKey, 
@@ -23,12 +23,41 @@ namespace KurisuBot
         )
         {
             Id = id;
-            OwnerId = ownerId;
+            Owner = owner;
             Blueprint = blueprint;
             TimeObtained = timeObtained;
             ImageKey = imageKey;
             BorderId = borderId;
             OverlayId = overlayId;
+        }
+
+        public bool TransferOwnership(KurisuUser other)
+        {
+            if(Owner == other)
+            {
+                return false;
+            }
+
+            KurisuUser prevOwner = Owner;
+            Owner = other;
+
+            if(!other.AddCard(this))
+            {
+                Console.WriteLine($"[KurisuCard] Error transferring ownership of card (ID: {Id}) from '{Owner.Username}' (ID: {Owner.Id}) to '{other.Username}' (ID: {other.Id})");
+                return false;
+            }
+
+            prevOwner.RemoveCard(this);
+            KurisuCardCache.MarkCardDirty(this);
+
+            Console.WriteLine($"[KurisuCard] Successfully transferred ownership of card (ID: {Id}) from '{prevOwner.Username}' (ID: {prevOwner.Id}) to '{Owner.Username}' (ID: {Owner.Id})");
+            return true;
+        }
+
+        public void SetTimeObtained(DateTime newTime)
+        {
+            TimeObtained = newTime;
+            KurisuCardCache.MarkCardDirty(this);
         }
 
         public override bool Equals(object? obj)
@@ -105,7 +134,6 @@ namespace KurisuBot
         public static async Task<List<KurisuCard>> LoadUserCardsDataAsync(KurisuUser user)
         {
             List<KurisuCard> cards = new();
-            long ownerId = user.Id;
 
             try
             {
@@ -126,7 +154,7 @@ namespace KurisuBot
 
                 await using NpgsqlCommand command = new NpgsqlCommand(sqlQuery, connection);
 
-                command.Parameters.AddWithValue("@ownerid", ownerId);
+                command.Parameters.AddWithValue("@ownerid", user.Id);
 
                 await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
 
@@ -161,7 +189,7 @@ namespace KurisuBot
 
                     KurisuCard card = new KurisuCard(
                         id,
-                        ownerId,
+                        user,
                         blueprint,
                         timeObtained,
                         imageKey,
@@ -174,10 +202,10 @@ namespace KurisuBot
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[KurisuCardCache] Error loading cards for user '{user.Username}' (ID: {ownerId}): {ex.Message}");
+                Console.WriteLine($"[KurisuCardCache] Error loading cards for user '{user.Username}' (ID: {user.Id}): {ex.Message}");
             }
 
-            Console.WriteLine($"[KurisuCardCache] Successfully loaded {cards.Count} cards for user '{user.Username}' (ID: {ownerId})");
+            Console.WriteLine($"[KurisuCardCache] Successfully loaded {cards.Count} cards for user '{user.Username}' (ID: {user.Id})");
             return cards;
         }
 
@@ -231,7 +259,7 @@ namespace KurisuBot
                         {
                             await writer.StartRowAsync();
                             await writer.WriteAsync(card.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
-                            await writer.WriteAsync(card.OwnerId, NpgsqlTypes.NpgsqlDbType.Bigint);
+                            await writer.WriteAsync(card.Owner.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
                             await writer.WriteAsync(card.Blueprint.Id, NpgsqlTypes.NpgsqlDbType.Integer);
 
                             await writer.WriteAsync(DateTime.SpecifyKind(card.TimeObtained, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);

@@ -25,6 +25,7 @@ namespace KurisuBot
         public KurisuUserSettings Settings { get; private set; }
         public DateTime LastQuizRegen { get; private set; }
 
+        private List<KurisuCard> _cards = new();
         private int _pity = 0;
         private int _quizTokens = 10;
         private int _coins = 0;
@@ -44,6 +45,44 @@ namespace KurisuBot
             Username = username;
             Settings = settings;
             LastQuizRegen = lastQuizRegen;
+        }
+
+        public bool AddCard(KurisuCard card)
+        {
+            if(_cards.Count >= Settings.MaxBinderSize)
+            {
+                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), max binder size reached");
+                return false;
+            }
+
+            if(_cards.Contains(card))
+            {
+                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), binder already contains card");
+                return false;
+            }
+
+            if(card.Owner != this)
+            {
+                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), card owner '{card.Owner.Username}' (ID: {card.Owner.Id}) does not match");
+                return false;
+            }
+
+            _cards.Add(card);
+
+            Console.WriteLine($"[KurisuUser] Successfully added card (ID: {card.Id}) to '{Username}' (ID: {Id})");
+            return true;
+        }
+
+        public void RemoveCard(KurisuCard card)
+        {
+            if(!_cards.Contains(card))
+            {
+                Console.WriteLine($"[KurisuUser] Error removing card (ID: {card.Id}) from '{Username}' (ID: {Id}), binder does not contain card");
+                return;
+            }
+
+            _cards.Remove(card);
+            Console.WriteLine($"[KurisuUser] Successfully removed card (ID: {card.Id}) from '{Username}' (ID: {Id})");
         }
 
         public int GetBalance(UserBalance balance)
@@ -175,6 +214,7 @@ namespace KurisuBot
     {
         public int CrushRewardMin { get; set; } = 3;
         public int CrushRewardMax { get; set; } = 5;
+        public int MaxBinderSize { get; set; } = 50;
 
         public int MaxQuizTokens { get; set; } = 10;
         public int QuizTokenRefreshInterval { get; set; } = 15;
