@@ -20,8 +20,8 @@ namespace KurisuBot
 
     public class KurisuUser
     {
-        public long Id { get; set; }
-        public string Username { get; set; }
+        public long Id { get; private set; }
+        public string Username { get; private set; }
         public KurisuUserSettings Settings { get; private set; }
         public DateTime LastQuizRegen { get; private set; }
 
