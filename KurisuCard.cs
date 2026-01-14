@@ -43,7 +43,7 @@ namespace KurisuBot
 
             if(!other.AddCard(this))
             {
-                Console.WriteLine($"[KurisuCard] Error transferring ownership of card (ID: {Id}) from '{Owner.Username}' (ID: {Owner.Id}) to '{other.Username}' (ID: {other.Id})");
+                Console.WriteLine($"[KurisuCard] Error transferring ownership of card (ID: {Id}) from '{prevOwner.Username}' (ID: {prevOwner.Id}) to '{other.Username}' (ID: {other.Id})");
                 return false;
             }
 
@@ -96,9 +96,23 @@ namespace KurisuBot
 
         public static void MarkCardDirty(KurisuCard card)
         {
+            if(_dirtyCards.Contains(card))
+            {
+                return;
+            }
+
             lock(_lock)
             {
                 _dirtyCards.Add(card);
+            }
+        }
+
+        public static void MarkCardForDelete(KurisuCard card)
+        {
+            lock(_lock)
+            {
+                _dirtyCards.Remove(card);
+                _deleteCards.Add(card);
             }
         }
 
@@ -111,7 +125,11 @@ namespace KurisuBot
 
             while(!_cts.IsCancellationRequested)
             {
-                await SaveCardsDataAsync();
+                try
+                {
+                    await SaveCardsDataAsync(_cts.Token);
+                }
+                catch (OperationCanceledException) { }
 
                 try
                 {
@@ -127,7 +145,13 @@ namespace KurisuBot
         public static async Task StopSaveLoopAsync()
         {
             _cts.Cancel();
-            await SaveCardsDataAsync();
+
+            try
+            {
+                await SaveCardsDataAsync(CancellationToken.None);
+            }
+            catch (OperationCanceledException) { }
+
             Console.WriteLine("[KurisuCardCache] Stopped save loop");
         }
 
@@ -209,17 +233,20 @@ namespace KurisuBot
             return cards;
         }
 
-        private static async Task SaveCardsDataAsync()
+        private static async Task SaveCardsDataAsync(CancellationToken token)
         {
-            HashSet<KurisuCard> cards;
+            HashSet<KurisuCard> dirtyCards;
+            HashSet<KurisuCard> deleteCards;
 
             lock(_lock)
             {
-                cards = [.. _dirtyCards];
+                dirtyCards = [.. _dirtyCards];
+                deleteCards = [.. _deleteCards];
                 _dirtyCards.Clear();
+                _deleteCards.Clear();
             }
 
-            if(!cards.Any())
+            if(!dirtyCards.Any() && !deleteCards.Any())
             {
                 return;
             }
@@ -227,119 +254,164 @@ namespace KurisuBot
             try
             {
                 await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
-                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+                await connection.OpenAsync(token);
+                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
 
                 try
                 {
-                    const string tempTableSQLQuery = @"
-                        CREATE TEMP TABLE temp_carddata (
-                            id BIGINT PRIMARY KEY,
-                            ownerid BIGINT,
-                            blueprintid INT,
-                            timeobtained TIMESTAMPTZ,
-                            imagekey INT,
-                            borderid INT,
-                            overlayid INT
-                        ) ON COMMIT DROP;
-                    ";
-
-                    await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
-                    await tempTableCommand.ExecuteNonQueryAsync();
-                    NpgsqlBinaryImporter? writer = null;
-
-                    try
+                    if(deleteCards.Any())
                     {
-                        writer = await connection.BeginBinaryImportAsync(@"
-                            COPY temp_carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
-                            FROM STDIN (FORMAT BINARY)
-                        ");
+                        const string tempDeleteTableSQLQuery = @"
+                            CREATE TEMP TABLE temp_deletecarddata (
+                                id BIGINT PRIMARY KEY
+                            ) ON COMMIT DROP;
+                        ";
 
-                        foreach(KurisuCard card in cards)
+                        await using NpgsqlCommand tempDeleteTableCommand = new NpgsqlCommand(tempDeleteTableSQLQuery, connection, transaction);
+                        await tempDeleteTableCommand.ExecuteNonQueryAsync(token);
+                        NpgsqlBinaryImporter? deleteWriter = null;
+
+                        try
                         {
-                            await writer.StartRowAsync();
-                            await writer.WriteAsync(card.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
-                            await writer.WriteAsync(card.Owner.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
-                            await writer.WriteAsync(card.Blueprint.Id, NpgsqlTypes.NpgsqlDbType.Integer);
+                            deleteWriter = await connection.BeginBinaryImportAsync(@"
+                                COPY temp_deletecarddata (id)
+                                FROM STDIN (FORMAT BINARY)
+                            ");
 
-                            await writer.WriteAsync(DateTime.SpecifyKind(card.TimeObtained, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
-
-                            if(card.ImageKey.HasValue)
+                            foreach(KurisuCard card in deleteCards)
                             {
-                                await writer.WriteAsync(card.ImageKey.Value, NpgsqlTypes.NpgsqlDbType.Integer);
-                            }
-                            else
-                            {
-                                await writer.WriteNullAsync();
+                                await deleteWriter.StartRowAsync();
+                                await deleteWriter.WriteAsync(card.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
                             }
 
-                            if(card.BorderId.HasValue)
-                            {
-                                await writer.WriteAsync(card.BorderId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
-                            }
-                            else
-                            {
-                                await writer.WriteNullAsync();
-                            }
-
-                            if(card.OverlayId.HasValue)
-                            {
-                                await writer.WriteAsync(card.OverlayId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
-                            }
-                            else
-                            {
-                                await writer.WriteNullAsync();
-                            }
+                            await deleteWriter.CompleteAsync(token);
+                        }
+                        finally
+                        {
+                            deleteWriter?.Dispose();
                         }
 
-                        await writer.CompleteAsync();
+                        const string deleteSQLQuery = @"
+                            DELETE FROM carddata
+                            WHERE id IN (SELECT id FROM temp_deletecarddata)
+                        ";
+
+                        await using NpgsqlCommand deleteTableCommand = new NpgsqlCommand(deleteSQLQuery, connection, transaction);
+                        await deleteTableCommand.ExecuteNonQueryAsync(token);
                     }
-                    catch
+
+                    if(dirtyCards.Any())
                     {
-                        if(writer != null)
+                        const string tempTableSQLQuery = @"
+                            CREATE TEMP TABLE temp_carddata (
+                                id BIGINT PRIMARY KEY,
+                                ownerid BIGINT,
+                                blueprintid INT,
+                                timeobtained TIMESTAMPTZ,
+                                imagekey INT,
+                                borderid INT,
+                                overlayid INT
+                            ) ON COMMIT DROP;
+                        ";
+
+                        await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
+                        await tempTableCommand.ExecuteNonQueryAsync(token);
+                        NpgsqlBinaryImporter? writer = null;
+
+                        try
                         {
-                            try
+                            writer = await connection.BeginBinaryImportAsync(@"
+                                COPY temp_carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
+                                FROM STDIN (FORMAT BINARY)
+                            ");
+
+                            foreach (KurisuCard card in dirtyCards)
                             {
-                                await writer.CloseAsync();
+                                await writer.StartRowAsync();
+                                await writer.WriteAsync(card.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
+                                await writer.WriteAsync(card.Owner.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
+                                await writer.WriteAsync(card.Blueprint.Id, NpgsqlTypes.NpgsqlDbType.Integer);
+                                await writer.WriteAsync(DateTime.SpecifyKind(card.TimeObtained, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
+
+                                if (card.ImageKey.HasValue)
+                                {
+                                    await writer.WriteAsync(card.ImageKey.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                                }
+                                else
+                                {
+                                    await writer.WriteNullAsync();
+                                }
+
+                                if (card.BorderId.HasValue)
+                                {
+                                    await writer.WriteAsync(card.BorderId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                                }
+                                else
+                                {
+                                    await writer.WriteNullAsync();
+                                }
+
+                                if (card.OverlayId.HasValue)
+                                {
+                                    await writer.WriteAsync(card.OverlayId.Value, NpgsqlTypes.NpgsqlDbType.Integer);
+                                }
+                                else
+                                {
+                                    await writer.WriteNullAsync();
+                                }
                             }
-                            catch { }
+
+                            await writer.CompleteAsync(token);
+                        }
+                        finally
+                        {
+                            writer?.Dispose();
                         }
 
-                        throw;
+                        const string upsertTableSQLQuery = @"
+                            INSERT INTO carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
+                            SELECT id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid
+                            FROM temp_carddata
+                            ON CONFLICT (id) DO UPDATE SET
+                                ownerid         = EXCLUDED.ownerid,
+                                blueprintid     = EXCLUDED.blueprintid,
+                                timeobtained    = EXCLUDED.timeobtained,
+                                imagekey        = EXCLUDED.imagekey,
+                                borderid        = EXCLUDED.borderid,
+                                overlayid       = EXCLUDED.overlayid
+                        ";
+
+                        await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);
+                        await upsertTableCommand.ExecuteNonQueryAsync(token);
                     }
-                    finally
+
+                    await transaction.CommitAsync(token);
+
+                    if(dirtyCards.Any())
                     {
-                        writer?.Dispose();
+                        Console.WriteLine($"[KurisuCardCache] Successfully saved {dirtyCards.Count} cards");
                     }
 
-                    const string upsertTableSQLQuery = @"
-                        INSERT INTO carddata (id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid)
-                        SELECT id, ownerid, blueprintid, timeobtained, imagekey, borderid, overlayid
-                        FROM temp_carddata
-                        ON CONFLICT (id) DO UPDATE SET
-                            ownerid         = EXCLUDED.ownerid,
-                            blueprintid     = EXCLUDED.blueprintid,
-                            timeobtained    = EXCLUDED.timeobtained,
-                            imagekey        = EXCLUDED.imagekey,
-                            borderid        = EXCLUDED.borderid,
-                            overlayid       = EXCLUDED.overlayid
-                    ";
-
-                    await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);
-                    await upsertTableCommand.ExecuteNonQueryAsync();
-                    await transaction.CommitAsync();
-                    Console.WriteLine($"[KurisuCardCache] Saved {cards.Count} cards' data");
+                    if(deleteCards.Any())
+                    {
+                        Console.WriteLine($"[KurisuCardCache] Successfully deleted {deleteCards.Count} cards");
+                    }
                 }
                 catch
                 {
                     Console.WriteLine($"[KurisuCardCache] Rolling back transaction...");
-                    await transaction.RollbackAsync();
+                    await transaction.RollbackAsync(token);
                     throw;
                 }
             }
+            catch(OperationCanceledException)
+            {
+                Console.WriteLine("[KurisuCardCache] Save cancelled");
+                throw;
+            }
             catch(Exception ex)
             {
-                Console.WriteLine($"[KurisuCardCache] Error saving {cards.Count} cards' data: {ex.Message}");
+                Console.WriteLine($"[KurisuCardCache] Error saving/deleting cards: {ex.Message}");
             }
         }
     }
