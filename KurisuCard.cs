@@ -5,17 +5,17 @@ namespace KurisuBot
     public class KurisuCard
     {
         public long Id { get; private set; }
-        public KurisuUser Owner { get; private set; }
-        public KurisuCardBlueprint Blueprint { get; private set; }
+        public KurisuUser? Owner { get; private set; }
+        public KurisuVariant Blueprint { get; private set; }
         public DateTime TimeObtained { get; private set; }
         public int? ImageKey { get; private set; } 
         public int? BorderId { get; private set; }
-        public int? OverlayId { get; private set; } 
+        public int? OverlayId { get; private set; }
 
         public KurisuCard(
             long id, 
-            KurisuUser owner, 
-            KurisuCardBlueprint blueprint, 
+            KurisuUser? owner, 
+            KurisuVariant blueprint, 
             DateTime timeObtained,
             int? imageKey, 
             int? borderId, 
@@ -31,33 +31,16 @@ namespace KurisuBot
             OverlayId = overlayId;
         }
 
-        public bool TransferOwnership(KurisuUser other)
+        public void SetOwner(KurisuUser owner)
         {
-            if(Owner == other)
-            {
-                return false;
-            }
-
-            KurisuUser prevOwner = Owner;
-            Owner = other;
-
-            if(!other.AddCard(this))
-            {
-                Console.WriteLine($"[KurisuCard] Error transferring ownership of card (ID: {Id}) from '{prevOwner.Username}' (ID: {prevOwner.Id}) to '{other.Username}' (ID: {other.Id})");
-                return false;
-            }
-
-            prevOwner.RemoveCard(this);
-            KurisuCardCache.MarkCardDirty(this);
-
-            Console.WriteLine($"[KurisuCard] Successfully transferred ownership of card (ID: {Id}) from '{prevOwner.Username}' (ID: {prevOwner.Id}) to '{Owner.Username}' (ID: {Owner.Id})");
-            return true;
+            Owner = owner;
+            KurisuCardDatabase.MarkCardDirty(this);
         }
 
         public void SetTimeObtained(DateTime newTime)
         {
             TimeObtained = newTime;
-            KurisuCardCache.MarkCardDirty(this);
+            KurisuCardDatabase.MarkCardDirty(this);
         }
 
         public override bool Equals(object? obj)
@@ -76,7 +59,7 @@ namespace KurisuBot
         }
     }
 
-    public static class KurisuCardCache
+    public static class KurisuCardDatabase
     {
         private static readonly int _saveLoopInterval = 5; // Every n minutes, update DB
 
@@ -96,11 +79,6 @@ namespace KurisuBot
 
         public static void MarkCardDirty(KurisuCard card)
         {
-            if(_dirtyCards.Contains(card))
-            {
-                return;
-            }
-
             lock(_lock)
             {
                 _dirtyCards.Add(card);
@@ -114,6 +92,21 @@ namespace KurisuBot
                 _dirtyCards.Remove(card);
                 _deleteCards.Add(card);
             }
+        }
+
+        public static void MarkCardForDelete(long id)
+        {
+            KurisuCard deleteCard = new(
+                id,
+                null!,
+                null!,
+                DateTime.MinValue,
+                null,
+                null,
+                null
+            );
+
+            MarkCardForDelete(deleteCard);
         }
 
         public static async Task StartSaveLoopAsync()
@@ -155,10 +148,8 @@ namespace KurisuBot
             Console.WriteLine("[KurisuCardCache] Stopped save loop");
         }
 
-        public static async Task<List<KurisuCard>> LoadUserCardsDataAsync(KurisuUser user)
+        public static async Task<KurisuResult> LoadUserCardsDataAsync(KurisuUser user)
         {
-            List<KurisuCard> cards = new();
-
             try
             {
                 await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
@@ -182,15 +173,20 @@ namespace KurisuBot
 
                 await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
 
+                int totalCards = 0;
+                int addedCards = 0;
+
                 while (await reader.ReadAsync())
                 {
                     long id = reader.GetInt64(reader.GetOrdinal("id"));
                     int blueprintId = reader.GetInt32(reader.GetOrdinal("blueprintid"));
-                    KurisuCardBlueprint? blueprint = KurisuCardBlueprintCache.SearchByID(blueprintId);
+                    KurisuVariant? blueprint = KurisuVariantCache.SearchByID(blueprintId);
 
                     if (blueprint == null)
                     {
-                        Console.WriteLine($"[KurisuCardCache] No card blueprint found with ID: {blueprintId} in Supabase, removing card (ID: {id}) from Supabase...");
+                        MarkCardForDelete(id);
+
+                        Console.WriteLine($"[KurisuCardCache] No variant found with ID: {blueprintId}, deleting card (ID: {id})");
                         continue;
                     }
 
@@ -221,16 +217,22 @@ namespace KurisuBot
                         overlayId
                     );
 
-                    cards.Add(card);
+                    if(user.AddCard(card) == KurisuResult.Completed)
+                    {
+                        addedCards++;
+                    }
+
+                    totalCards++;
                 }
+
+                Console.WriteLine($"[KurisuCardCache] Successfully loaded {addedCards} of {totalCards} cards for user '{user.Username}' (ID: {user.Id})");
+                return KurisuResult.Completed;
             }
-            catch (Exception ex)
+            catch (PostgresException ex)
             {
                 Console.WriteLine($"[KurisuCardCache] Error loading cards for user '{user.Username}' (ID: {user.Id}): {ex.Message}");
+                return KurisuResult.DatabaseFailure;
             }
-
-            Console.WriteLine($"[KurisuCardCache] Successfully loaded {cards.Count} cards for user '{user.Username}' (ID: {user.Id})");
-            return cards;
         }
 
         private static async Task SaveCardsDataAsync(CancellationToken token)

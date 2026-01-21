@@ -14,7 +14,7 @@ namespace KurisuBot.Commands
         {
             await ctx.DeferResponseAsync();
 
-            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+            KurisuUser user = await KurisuUserCache.SearchByCommandContextAsync(ctx);
 
             if(user.GetBalance(UserBalance.QuizTokens) <= 0)
             {

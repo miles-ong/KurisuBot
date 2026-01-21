@@ -16,7 +16,7 @@ namespace KurisuBot.Commands
         {
             await ctx.DeferResponseAsync();
 
-            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+            KurisuUser user = await KurisuUserCache.SearchByCommandContextAsync(ctx);
 
             KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
 
@@ -39,7 +39,7 @@ namespace KurisuBot.Commands
         {
             await ctx.DeferResponseAsync();
 
-            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+            KurisuUser user = await KurisuUserCache.SearchByCommandContextAsync(ctx);
 
             KurisuAnime? anime = KurisuAnimeCache.SearchByTitleBestMatch(title);
 
@@ -71,7 +71,7 @@ namespace KurisuBot.Commands
         {
             await ctx.DeferResponseAsync();
 
-            KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+            KurisuUser user = await KurisuUserCache.SearchByCommandContextAsync(ctx);
 
             KurisuAnime? similarAnime = KurisuAnimeCache.SearchByTitleBestMatch(title);
 
@@ -103,7 +103,7 @@ namespace KurisuBot.Commands
             {
                 await ctx.DeferResponseAsync();
 
-                KurisuUser user = await KurisuUserCache.GetUserAsync(ctx);
+                KurisuUser user = await KurisuUserCache.SearchByCommandContextAsync(ctx);
 
                 KurisuAnime? anime = KurisuAnimeCache.SearchByID(id);
 

@@ -53,7 +53,7 @@ namespace KurisuBot.EventHandlers
             if(targetQuiz.Owner == null)
             {
                 // Universal quizzes (implement later)
-                KurisuUser user = await KurisuUserCache.GetUserAsync((long)e.User.Id);
+                KurisuUser user = await KurisuUserCache.SearchByIDAsync((long)e.User.Id);
                 throw new NotImplementedException();
             }
             else if(await UniversalEventHandler.ValidateInputAuthAsync(e, targetQuiz.Owner, "This quiz is not for you!"))

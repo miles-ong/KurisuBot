@@ -24,8 +24,9 @@ namespace KurisuBot
         public string Username { get; private set; }
         public KurisuUserSettings Settings { get; private set; }
         public DateTime LastQuizRegen { get; private set; }
+        public IReadOnlyCollection<KurisuCard> Cards => _cards;
 
-        private List<KurisuCard> _cards = new();
+        private HashSet<KurisuCard> _cards = new();
         private int _pity = 0;
         private int _quizTokens = 10;
         private int _coins = 0;
@@ -47,42 +48,34 @@ namespace KurisuBot
             LastQuizRegen = lastQuizRegen;
         }
 
-        public bool AddCard(KurisuCard card)
+        public KurisuResult AddCard(KurisuCard card)
         {
-            if(_cards.Count >= Settings.MaxBinderSize)
-            {
-                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), max binder size reached");
-                return false;
-            }
-
             if(_cards.Contains(card))
             {
-                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), binder already contains card");
-                return false;
+                return KurisuResult.UserAlreadyContainsCard;
             }
 
-            if(card.Owner != this)
+            if(_cards.Count >= Settings.MaxBinderSize)
             {
-                Console.WriteLine($"[KurisuUser] Error adding card (ID: {card.Id}) to '{Username}' (ID: {Id}), card owner '{card.Owner.Username}' (ID: {card.Owner.Id}) does not match");
-                return false;
+                return KurisuResult.UserMaxCardsReached;
             }
 
+            card.SetOwner(this);
             _cards.Add(card);
 
-            Console.WriteLine($"[KurisuUser] Successfully added card (ID: {card.Id}) to '{Username}' (ID: {Id})");
-            return true;
+            return KurisuResult.Completed;
         }
 
-        public void RemoveCard(KurisuCard card)
+        public KurisuResult RemoveCard(KurisuCard card)
         {
             if(!_cards.Contains(card))
             {
-                Console.WriteLine($"[KurisuUser] Error removing card (ID: {card.Id}) from '{Username}' (ID: {Id}), binder does not contain card");
-                return;
+                return KurisuResult.UserDoesNotContainCard;
             }
 
             _cards.Remove(card);
-            Console.WriteLine($"[KurisuUser] Successfully removed card (ID: {card.Id}) from '{Username}' (ID: {Id})");
+
+            return KurisuResult.Completed;
         }
 
         public int GetBalance(UserBalance balance)
@@ -126,7 +119,7 @@ namespace KurisuBot
             }
         }
 
-        public bool ModifyBalance(UserBalance balance, OperationType operation, int amount)
+        public void ModifyBalance(UserBalance balance, OperationType operation, int amount)
         {
             int modifiedBalance = GetBalance(balance);
 
@@ -145,14 +138,7 @@ namespace KurisuBot
                 case OperationType.Set: modifiedBalance = amount; break;
             }
 
-            if(modifiedBalance < 0)
-            {
-                return false;
-            }
-
             SetBalance(balance, modifiedBalance);
-
-            return true;
         }
 
         public TimeSpan GetNextQuizRegen()
@@ -266,11 +252,14 @@ namespace KurisuBot
             Console.WriteLine("[KurisuUserCache] Initialized");
         }
 
-        public static async Task<KurisuUser> GetUserAsync(long id)
+        public static async Task<KurisuUser> SearchByIDAsync(long id)
         {
-            if(!_cache.TryGetValue(id, out KurisuUser user))
+            if(!_cache.TryGetValue(id, out KurisuUser? user))
             {
-                user = await LoadUserDataAsync(id) ?? await CreateUserAsync(id);
+                Result<KurisuUser> result = await LoadUserDataAsync(id);
+                user = result.Success
+                    ? result.Value
+                    : await CreateUserAsync(id);
 
                 _cache.Set(id, user, new MemoryCacheEntryOptions
                 {
@@ -278,12 +267,12 @@ namespace KurisuBot
                 });
             }
 
-            return user;
+            return user!;
         }
 
-        public static async Task<KurisuUser> GetUserAsync(CommandContext ctx)
+        public static async Task<KurisuUser> SearchByCommandContextAsync(CommandContext ctx)
         {
-            return await GetUserAsync((long)ctx.User.Id);
+            return await SearchByIDAsync((long)ctx.User.Id);
         }
 
         public static void MarkUserDirty(KurisuUser user)
@@ -303,7 +292,11 @@ namespace KurisuBot
 
             while(!_cts.IsCancellationRequested)
             {
-                await SaveUsersDataAsync();
+                try
+                {
+                    await SaveUsersDataAsync(_cts.Token);
+                }
+                catch (OperationCanceledException) { }
 
                 try
                 {
@@ -319,7 +312,7 @@ namespace KurisuBot
         public static async Task StopSaveLoopAsync()
         {
             _cts.Cancel();
-            await SaveUsersDataAsync();
+            await SaveUsersDataAsync(_cts.Token);
             Console.WriteLine("[KurisuUserCache] Stopped save loop");
         }
 
@@ -337,11 +330,11 @@ namespace KurisuBot
 
             MarkUserDirty(user);
 
-            Console.WriteLine($"[KurisuUserCache] Creating new user for '{username}' (ID: {id})");
+            Console.WriteLine($"[KurisuUserCache] Successfully created new user '{username}' (ID: {id})");
             return user;
         }
 
-        private static async Task<KurisuUser?> LoadUserDataAsync(long id)
+        private static async Task<Result<KurisuUser>> LoadUserDataAsync(long id)
         {
             try
             {
@@ -396,135 +389,116 @@ namespace KurisuBot
                     user.SetBalance(UserBalance.SSRDust, reader.GetInt32(reader.GetOrdinal("ssrdust")), false);
                     user.SetBalance(UserBalance.URDust, reader.GetInt32(reader.GetOrdinal("urdust")), false);
 
-                    Console.WriteLine($"[KurisuUserCache] Loaded user '{username}' (ID: {id}) from Supabase");
-                    return user;
+                    Console.WriteLine($"[KurisuUserCache] Successfully loaded user '{username}' (ID: {id})");
+                    return Result<KurisuUser>.Ok(user);
                 }
 
-                Console.WriteLine($"[KurisuUserCache] Error finding user with ID: {id} in Supabase");
-                return null;
+                Console.WriteLine($"[KurisuUserCache] No user found with ID: {id}");
+                return Result<KurisuUser>.Fail(KurisuResult.CannotFindUser);
             }
-            catch (Exception ex)
+            catch (PostgresException ex)
             {
-                Console.WriteLine($"[KurisuUserCache] Error loading user data for ID: {id}: {ex.Message}");
-                throw;
+                Console.WriteLine($"[KurisuUserCache] Error loading user (ID: {id}): {ex.Message}");
+                return Result<KurisuUser>.Fail(KurisuResult.DatabaseFailure);
             }
         }
 
-        private static async Task SaveUsersDataAsync()
+        private static async Task<KurisuResult> SaveUsersDataAsync(CancellationToken token)
         {
             HashSet<KurisuUser> users;
 
             lock(_lock)
             {
+                if(_dirtyUsers.Count <= 0)
+                {
+                    return KurisuResult.Completed;
+                }
+
                 users = [.. _dirtyUsers];
                 _dirtyUsers.Clear();
-            }
-
-            if(!users.Any())
-            {
-                return;
             }
 
             try
             {
                 await using NpgsqlConnection connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
-                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync();
+                await connection.OpenAsync(token);
+                await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+
+                const string tempTableSQLQuery = @"
+                    CREATE TEMP TABLE temp_userdata (
+                        id BIGINT PRIMARY KEY,
+                        settings JSONB,
+                        quiztokens INT,
+                        lastquizregen TIMESTAMPTZ,
+                        pity INT,
+                        coins INT,
+                        rdust INT,
+                        srdust INT,
+                        ssrdust INT,
+                        urdust INT
+                    ) ON COMMIT DROP;    
+                ";
+
+                await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
+                await tempTableCommand.ExecuteNonQueryAsync(token);
+                NpgsqlBinaryImporter? writer = null;
 
                 try
                 {
-                    const string tempTableSQLQuery = @"
-                        CREATE TEMP TABLE temp_userdata (
-                            id BIGINT PRIMARY KEY,
-                            settings JSONB,
-                            quiztokens INT,
-                            lastquizregen TIMESTAMPTZ,
-                            pity INT,
-                            coins INT,
-                            rdust INT,
-                            srdust INT,
-                            ssrdust INT,
-                            urdust INT
-                        ) ON COMMIT DROP;    
-                    ";
+                    writer = await connection.BeginBinaryImportAsync(@"
+                        COPY temp_userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust)
+                        FROM STDIN (FORMAT BINARY)
+                    ");
 
-                    await using NpgsqlCommand tempTableCommand = new NpgsqlCommand(tempTableSQLQuery, connection, transaction);
-                    await tempTableCommand.ExecuteNonQueryAsync();
-                    NpgsqlBinaryImporter? writer = null;
-
-                    try
+                    foreach(KurisuUser user in users)
                     {
-                        writer = await connection.BeginBinaryImportAsync(@"
-                            COPY temp_userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust)
-                            FROM STDIN (FORMAT BINARY)
-                        ");
-
-                        foreach(KurisuUser user in users)
-                        {
-                            await writer.StartRowAsync();
-                            await writer.WriteAsync(user.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
-                            await writer.WriteAsync(KurisuUserSettingsSerializer.Serialize(user.Settings), NpgsqlTypes.NpgsqlDbType.Jsonb);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.QuizTokens), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(DateTime.SpecifyKind(user.LastQuizRegen, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.Pity), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.Coins), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.RDust), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.SRDust), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.SSRDust), NpgsqlTypes.NpgsqlDbType.Integer);
-                            await writer.WriteAsync(user.GetBalance(UserBalance.URDust), NpgsqlTypes.NpgsqlDbType.Integer);
-                        }
-
-                        await writer.CompleteAsync();
-                    }
-                    catch
-                    {
-                        if(writer != null)
-                        {
-                            try
-                            {
-                                await writer.CloseAsync();
-                            }
-                            catch { }
-                        }
-
-                        throw;
-                    }
-                    finally
-                    {
-                        writer?.Dispose();
+                        await writer.StartRowAsync();
+                        await writer.WriteAsync(user.Id, NpgsqlTypes.NpgsqlDbType.Bigint);
+                        await writer.WriteAsync(KurisuUserSettingsSerializer.Serialize(user.Settings), NpgsqlTypes.NpgsqlDbType.Jsonb);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.QuizTokens), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(DateTime.SpecifyKind(user.LastQuizRegen, DateTimeKind.Utc), NpgsqlTypes.NpgsqlDbType.TimestampTz);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.Pity), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.Coins), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.RDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.SRDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.SSRDust), NpgsqlTypes.NpgsqlDbType.Integer);
+                        await writer.WriteAsync(user.GetBalance(UserBalance.URDust), NpgsqlTypes.NpgsqlDbType.Integer);
                     }
 
-                    const string upsertTableSQLQuery = @"
-                        INSERT INTO userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust) 
-                        SELECT id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust
-                        FROM temp_userdata
-                        ON CONFLICT (id) DO UPDATE SET
-                            settings        = EXCLUDED.settings,
-                            quiztokens      = EXCLUDED.quiztokens,
-                            lastquizregen   = EXCLUDED.lastquizregen,
-                            pity            = EXCLUDED.pity,
-                            coins           = EXCLUDED.coins,
-                            rdust           = EXCLUDED.rdust,
-                            srdust          = EXCLUDED.srdust,
-                            ssrdust         = EXCLUDED.ssrdust,
-                            urdust          = EXCLUDED.urdust
-                    ";
-
-                    await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);
-                    await upsertTableCommand.ExecuteNonQueryAsync();
-                    await transaction.CommitAsync();
-                    Console.WriteLine($"[KurisuUserCache] Saved {users.Count} users' data");
+                    await writer.CompleteAsync(token);
                 }
-                catch
+                finally
                 {
-                    Console.WriteLine($"[KurisuUserCache] Rolling back transaction...");
-                    await transaction.RollbackAsync();
-                    throw;
+                    writer?.Dispose();
                 }
+
+                const string upsertTableSQLQuery = @"
+                    INSERT INTO userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust) 
+                    SELECT id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust
+                    FROM temp_userdata
+                    ON CONFLICT (id) DO UPDATE SET
+                        settings        = EXCLUDED.settings,
+                        quiztokens      = EXCLUDED.quiztokens,
+                        lastquizregen   = EXCLUDED.lastquizregen,
+                        pity            = EXCLUDED.pity,
+                        coins           = EXCLUDED.coins,
+                        rdust           = EXCLUDED.rdust,
+                        srdust          = EXCLUDED.srdust,
+                        ssrdust         = EXCLUDED.ssrdust,
+                        urdust          = EXCLUDED.urdust
+                ";
+
+                await using NpgsqlCommand upsertTableCommand = new NpgsqlCommand(upsertTableSQLQuery, connection, transaction);
+                await upsertTableCommand.ExecuteNonQueryAsync(token);
+                await transaction.CommitAsync(token);
+
+                Console.WriteLine($"[KurisuUserCache] Saved {users.Count} users' data");
+                return KurisuResult.Completed;
             }
-            catch(Exception ex)
+            catch(PostgresException ex)
             {
                 Console.WriteLine($"[KurisuUserCache] Error saving {users.Count} users' data: {ex.Message}");
+                return KurisuResult.DatabaseFailure;
             }
         }
     }
