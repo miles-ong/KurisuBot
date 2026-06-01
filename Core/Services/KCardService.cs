@@ -1,7 +1,6 @@
 ﻿using KurisuBot.Core.Infrastructure.Cache;
 using KurisuBot.Core.Infrastructure.Repositories;
 using KurisuBot.Core.Models;
-using KurisuBot.Engine;
 
 namespace KurisuBot.Core.Services
 {

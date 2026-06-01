@@ -2,7 +2,6 @@
 using DSharpPlus.Entities;
 using KurisuBot.Core.Models;
 using KurisuBot.Discord.EmbedBuilders;
-using KurisuBot.Engine;
 
 namespace KurisuBot.Discord
 {

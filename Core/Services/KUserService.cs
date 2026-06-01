@@ -2,7 +2,6 @@
 using KurisuBot.Core.Infrastructure.Enums;
 using KurisuBot.Core.Infrastructure.Repositories;
 using KurisuBot.Core.Models;
-using KurisuBot.Engine;
 
 namespace KurisuBot.Core.Services
 {

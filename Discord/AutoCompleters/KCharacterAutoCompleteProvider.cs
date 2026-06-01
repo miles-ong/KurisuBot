@@ -1,7 +1,6 @@
 ﻿using DSharpPlus.Commands.Processors.SlashCommands;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
-using KurisuBot.Engine;
 
 namespace KurisuBot.Discord.AutoCompleters
 {

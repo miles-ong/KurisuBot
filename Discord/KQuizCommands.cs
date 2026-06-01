@@ -4,7 +4,6 @@ using KurisuBot.Core.Infrastructure.Enums;
 using KurisuBot.Core.Models;
 using KurisuBot.Discord.EmbedBuilders;
 using KurisuBot.Discord.EventHandlers;
-using KurisuBot.Engine;
 
 namespace KurisuBot.Discord
 {

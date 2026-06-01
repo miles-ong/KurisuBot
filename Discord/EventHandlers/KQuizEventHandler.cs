@@ -5,7 +5,6 @@ using DSharpPlus.EventArgs;
 using KurisuBot.Core.Infrastructure.Enums;
 using KurisuBot.Core.Models;
 using KurisuBot.Discord.EmbedBuilders;
-using KurisuBot.Engine;
 using System.Collections.Concurrent;
 
 namespace KurisuBot.Discord.EventHandlers

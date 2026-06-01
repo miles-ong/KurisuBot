@@ -1,4 +1,5 @@
-﻿using DSharpPlus;
+﻿using DotNetEnv;
+using DSharpPlus;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.Processors.SlashCommands;
 using DSharpPlus.Commands.Processors.TextCommands;
@@ -33,15 +34,20 @@ namespace KurisuBot.Engine
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine($"{_consoleTag} Reading config...");
-            string jsonString = File.ReadAllText("config.json");
-            KConfig config = JsonSerializer.Deserialize<KConfig>(jsonString) ?? throw new Exception("Failed to load config!");
-            Console.WriteLine($"{_consoleTag} Successfully read config!");
+            Env.Load();
 
-            string connectionString = config.Supabase.ConnectionString;
+            Console.WriteLine($"{_consoleTag} Loading environment variables...");
+
+            string discordToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+                ?? throw new Exception("Missing DISCORD_TOKEN");
+
+            string supabaseConnection = Environment.GetEnvironmentVariable("SUPABASE_CONNECTION")
+                ?? throw new Exception("Missing SUPABASE_CONNECTION");
+
+            Console.WriteLine($"{_consoleTag} Successfully loaded environment variables");
 
             DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(
-                config.Discord.Token,
+                discordToken,
                 TextCommandProcessor.RequiredIntents | SlashCommandProcessor.RequiredIntents | DiscordIntents.MessageContents
             );
 
@@ -70,13 +76,13 @@ namespace KurisuBot.Engine
             Client = builder.Build();
 
             Console.WriteLine($"{_consoleTag} Constructing services...");
-            AnimeService = new KAnimeService(connectionString);
-            CharacterService = new KCharacterService(connectionString);
-            CharacterAnimeLinkService = new KCharacterAnimeLinkService(connectionString);
-            VariantService = new KVariantService(connectionString);
-            CardService = new KCardService(connectionString);
+            AnimeService = new KAnimeService(supabaseConnection);
+            CharacterService = new KCharacterService(supabaseConnection);
+            CharacterAnimeLinkService = new KCharacterAnimeLinkService(supabaseConnection);
+            VariantService = new KVariantService(supabaseConnection);
+            CardService = new KCardService(supabaseConnection);
             ALService = new AniListService(_httpClient);
-            UserService = new KUserService(connectionString, async id =>
+            UserService = new KUserService(supabaseConnection, async id =>
             {
                 DiscordUser dUser = await Client.GetUserAsync((ulong)id);
 
