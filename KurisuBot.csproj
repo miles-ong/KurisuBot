@@ -12,6 +12,7 @@
     <PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02566" />
     <PackageReference Include="DSharpPlus.Interactivity" Version="5.0.0-nightly-02566" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
+    <PackageReference Include="MeiliSearch" Version="0.18.0" />
     <PackageReference Include="Npgsql" Version="10.0.1" />
   </ItemGroup>
 
