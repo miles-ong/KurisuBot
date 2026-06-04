@@ -39,6 +39,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
     <PackageReference Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.11" />
   </ItemGroup>
 
@@ -47,7 +48,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="MainView.axaml.cs">
+    <Compile Update="Views\MainView.axaml.cs">
       <DependentUpon>MainView.axaml</DependentUpon>
     </Compile>
   </ItemGroup>

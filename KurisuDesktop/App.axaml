@@ -1,9 +1,14 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="KurisuDesktop.App"
+             xmlns:local="clr-namespace:KurisuDesktop"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <Application.DataTemplates>
+        <local:ViewLocator></local:ViewLocator>
+    </Application.DataTemplates>
+    
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="Styles/AppDefaultStyles.axaml"></StyleInclude>
@@ -18,7 +23,8 @@
         </LinearGradientBrush>
 
         <SolidColorBrush x:Key="PrimaryHoverForeground">White</SolidColorBrush>
-        <SolidColorBrush x:Key="PrimaryHoverBackground">#4d4d4d</SolidColorBrush>
+        <SolidColorBrush x:Key="PrimaryHoverBackground">#8c3232</SolidColorBrush>
+        <SolidColorBrush x:Key="PrimaryActiveBackground">#bf4343</SolidColorBrush>
 
         <FontFamily x:Key="GGSans">/Assets/Fonts/gg sans Regular.ttf#gg sans Normal</FontFamily>
         <FontFamily x:Key="GGSansMedium">/Assets/Fonts/gg sans Medium.ttf#gg sans Medium</FontFamily>

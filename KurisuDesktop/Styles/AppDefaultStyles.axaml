@@ -42,4 +42,8 @@
         <Setter Property="Foreground" Value="{DynamicResource ResourceKey=PrimaryHoverForeground}"></Setter>
         <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryHoverBackground}"></Setter>
     </Style>
+
+    <Style Selector="Button.active /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryActiveBackground}"></Setter>
+    </Style>
 </Styles>
