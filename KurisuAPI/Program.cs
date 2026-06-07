@@ -1,6 +1,8 @@
 using KurisuAPI.Middleware;
 using KurisuAPI.Services;
 
+AppContext.SetSwitch("System.Net.DisableIPv6", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 Console.WriteLine("[KurisuAPI] Reading environment variables...");
