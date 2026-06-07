@@ -34,7 +34,7 @@ Console.WriteLine($"{_consoleTag} Successfully initialized services");
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection(); - disabled for railway
 app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
 
