@@ -10,7 +10,7 @@ namespace KurisuBot.Discord.AutoCompleters
         public async ValueTask<IEnumerable<DiscordAutoCompleteChoice>> AutoCompleteAsync(AutoCompleteContext ctx)
         {
             string query = ctx.UserInput ?? "";
-            List<KAnime> results = await Program.APIClient.Anime.SearchAsync(query);
+            List<KAnime> results = await Program.ApiClient.Anime.SearchAsync(query);
 
             return results.Select(a => new DiscordAutoCompleteChoice(a.Title, a.Id));
         }

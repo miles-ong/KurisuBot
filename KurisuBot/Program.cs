@@ -18,7 +18,7 @@ namespace KurisuBot
     internal sealed class Program
     {
         public static DiscordClient Client { get; private set; } = null!;
-        public static KurisuAPIClient APIClient { get; private set; } = null!;
+        public static KurisuAPIClient ApiClient { get; private set; } = null!;
         public static AniListService ALService { get; private set; } = null!;
         public static KQuizGenerator QuizGenerator { get; private set; } = null!;
 
@@ -42,20 +42,12 @@ namespace KurisuBot
 
             Console.WriteLine($"{_consoleTag} Successfully loaded environment variables");
 
-            APIClient = new KurisuAPIClient(apiUrl, apiKey);
+            ApiClient = new KurisuAPIClient(apiUrl, apiKey);
 
             Console.WriteLine($"{_consoleTag} Waiting for API...");
 
-            while (true)
+            while (!await ApiClient.CheckHealthAsync())
             {
-                try
-                {
-                    var response = await _httpClient.GetAsync($"{apiUrl}/health");
-
-                    if (response.IsSuccessStatusCode) break;
-                }
-                catch { }
-
                 await Task.Delay(2000);
                 Console.WriteLine($"{_consoleTag} API not ready, retrying...");
             }

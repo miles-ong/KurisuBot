@@ -10,6 +10,8 @@ obj/
 # Environment & secrets
 .env
 **/launchSettings.json
+**/PreviewerConfig.cs
+**/Config.cs
 
 # NuGet
 *.nupkg

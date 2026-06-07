@@ -35,7 +35,7 @@ namespace KurisuBot.Discord.Commands
                 return;
             }
 
-            await Program.APIClient.User.ModifyBalanceAsync(owner.Id, KBalance.QuizTokens, KOperation.Subtract, 1);
+            await Program.ApiClient.User.ModifyBalanceAsync(owner.Id, KBalance.QuizTokens, KOperation.Subtract, 1);
             KQuiz quiz = await Program.QuizGenerator.GenerateAsync(difficulty);
             await KQuizEventHandler.RegisterAndSendAsync(ctx, quiz, owner);
         }

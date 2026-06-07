@@ -1,0 +1,56 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+    <Border Padding="20">
+        <TextBox PlaceholderText="Hi"></TextBox>
+    </Border>
+    </Design.PreviewWith>
+
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{DynamicResource PrimaryElementBackground}"></Setter>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryElementOutline}"></Setter>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource PrimaryElementForeground}"></Setter>
+
+        <Style.Resources>
+           <x:Double x:Key="TextControlPlaceholderOpacity">0.6</x:Double> 
+        </Style.Resources>
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="0:0:0.2"></BrushTransition>
+                <BrushTransition Property="PlaceholderForeground" Duration="0:0:0.2"></BrushTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="TextBox /template/ Border#PART_BorderElement">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.2"></BrushTransition>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.2"></BrushTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="TextBox:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryElementHoverForeground}"></Setter>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource PrimaryElementHoverForeground}"></Setter>
+    </Style>
+
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource PrimaryElementHoverBackground}"></Setter>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryElementHoverOutline}"></Setter>
+    </Style>
+
+    <Style Selector="TextBox:focus">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryElementHoverForeground}"></Setter>
+        <Setter Property="PlaceholderForeground" Value="{DynamicResource PrimaryElementHoverForeground}"></Setter>
+    </Style>
+
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource PrimaryElementActiveBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryElementForeground}"/>
+    </Style>
+</Styles>

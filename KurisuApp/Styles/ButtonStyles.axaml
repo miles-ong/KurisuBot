@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:KurisuApp.Themes">
+       
+  <Design.PreviewWith>
+    <Border Padding="20">
+      <c:IconButton IconText="&#xe7f2;" Content="Hello"></c:IconButton>
+    </Border>
+  </Design.PreviewWith>
+
+    <Style Selector=":is(Button)">
+        <Setter Property="Foreground" Value="{DynamicResource ResourceKey=PrimaryElementForeground}"></Setter>
+        <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryElementBackground}"></Setter>
+    </Style>
+
+    <Style Selector=":is(Button) /template/ ContentPresenter">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="0:0:0.2"></BrushTransition>
+                <BrushTransition Property="Background" Duration="0:0:0.2"></BrushTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector=":is(Button):pointerover /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource ResourceKey=PrimaryElementHoverForeground}"></Setter>
+        <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryElementHoverBackground}"></Setter>
+    </Style>
+
+    <Style Selector=":is(Button).active /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource ResourceKey=PrimaryElementHoverForeground}"></Setter>
+        <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryElementActiveBackground}"></Setter>
+    </Style>
+</Styles>

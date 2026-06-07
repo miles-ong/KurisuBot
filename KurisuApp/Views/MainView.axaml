@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:t="using:KurisuApp.Themes"
+        xmlns:vm="clr-namespace:KurisuApp.ViewModels"
+        xmlns:view="clr-namespace:KurisuApp.Views"
+        mc:Ignorable="d" d:DesignWidth="1600" d:DesignHeight="900"
+        Width="1600" Height="900"
+        x:Class="KurisuApp.Views.MainView"
+        x:DataType="vm:MainViewModel"
+        Title="KurisuApp">
+
+    <Design.DataContext><vm:MainViewModel/></Design.DataContext>
+
+    <Grid Background="{DynamicResource ResourceKey=PrimaryBackground}" ColumnDefinitions="Auto, *">
+
+        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"></ContentControl>
+
+        <Border Grid.Column="0" Padding="20" Background="{DynamicResource ResourceKey=PrimaryForeground}">
+            <Grid RowDefinitions="*, Auto">
+                <StackPanel Grid.Row="0" Spacing="10">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{DynamicResource ResourceKey=GGSansBold}" FontSize="60">Kurisu</TextBlock>
+                        <TextBlock FontFamily="{DynamicResource ResourceKey=GGSans}" FontSize="40">DB</TextBlock>
+                    </StackPanel>
+                    <t:IconButton IconText="&#xeae6;" Content="Anime" FontSize="40" HorizontalAlignment="Stretch" Classes.active="{Binding AnimePageIsActive}" Command="{Binding GoToAnimeCommand}"></t:IconButton>
+                    <t:IconButton IconText="&#xe4c2;" Content="Characters" FontSize="40" HorizontalAlignment="Stretch" Classes.active="{Binding CharacterPageIsActive}" Command="{Binding GoToCharacterCommand}"></t:IconButton>
+                    <t:IconButton IconText="&#xe46a;" Content="Variants" FontSize="40" HorizontalAlignment="Stretch" Classes.active="{Binding VariantPageIsActive}" Command="{Binding GoToVariantCommand}"></t:IconButton>
+                </StackPanel>
+
+                <Label Grid.Row="1" FontSize="20" Content="{Binding ApiStatus}"></Label>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

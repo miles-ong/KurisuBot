@@ -61,7 +61,7 @@ namespace KurisuBot.Discord.EventHandlers
             bool correct = selectedOption.Equals(quiz.Answer);
             int reward = quiz.GenerateReward(correct, owner.Settings.QuizRewardMin, owner.Settings.QuizRewardMax);
 
-            if (reward > 0) await Program.APIClient.User.ModifyBalanceAsync(owner.Id, KBalance.Coins, KOperation.Add, reward);
+            if (reward > 0) await Program.ApiClient.User.ModifyBalanceAsync(owner.Id, KBalance.Coins, KOperation.Add, reward);
 
             return (selectedOption, correct, reward);
         }

@@ -18,7 +18,7 @@ namespace KurisuBot.Discord.Commands
         {
             await ctx.DeferResponseAsync();
             KUser? user = await GetUserAsync(ctx.User);
-            KAnime? anime = await Program.APIClient.Anime.GetAsync(id);
+            KAnime? anime = await Program.ApiClient.Anime.GetAsync(id);
 
             if (anime is null)
             {

@@ -1,0 +1,15 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Design.PreviewWith>
+    <Border Padding="20" Background="{DynamicResource PrimaryBackground}">
+      
+      <AutoCompleteBox></AutoCompleteBox>
+    </Border>
+  </Design.PreviewWith>
+
+  <!-- Add Styles Here -->
+    <Style Selector="AutoCompleteBox">
+        <Setter Property="PlaceholderText" Value="Search..."></Setter>
+    </Style>
+</Styles>
+

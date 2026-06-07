@@ -1,0 +1,15 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:KurisuApp.Themes">
+
+  <Design.PreviewWith>
+      <c:IconButton IconText="&#xeae6;" Content="Anime" FontSize="40"></c:IconButton>
+
+
+  </Design.PreviewWith>
+
+    <Style Selector="Label.icon">
+        <Setter Property="FontFamily" Value="{DynamicResource ResourceKey=PhosphorFill}"></Setter>
+        <Setter Property="VerticalAlignment" Value="Center"></Setter>
+    </Style>
+</Styles>

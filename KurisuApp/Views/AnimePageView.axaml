@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:t="using:KurisuApp.Themes"
+            xmlns:vm="clr-namespace:KurisuApp.ViewModels"
+            xmlns:models="clr-namespace:KurisuCore.Models"
+            mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+            x:Class="KurisuApp.Views.AnimePageView"
+            x:DataType="vm:AnimePageViewModel">
+
+    <Design.DataContext><vm:AnimePageViewModel/></Design.DataContext>
+
+    <Border Margin="20">
+        <Grid RowDefinitions="Auto, *" RowSpacing="20">
+            <AutoCompleteBox Grid.Row="0"
+                x:Name="SearchBox"
+                FontSize="30"
+                ItemsSource="{Binding SearchResults}"
+                SelectedItem="{Binding SelectedAnime}"
+                ValueMemberBinding="{Binding Title}"
+                MinimumPrefixLength="2"
+                MinimumPopulateDelay="0:0:0.3">
+            </AutoCompleteBox>
+            <Grid Grid.Row="1" ColumnDefinitions="*, Auto">
+                <Border Grid.Column="0">
+                    <Grid RowDefinitions="Auto, *, Auto" RowSpacing="10" ColumnSpacing="20">
+                        <TextBox Grid.Row="0" 
+                                FontSize="20" 
+                                PlaceholderText="Edit anime title..."
+                                Text="{Binding TitleInput}"/>
+                        <TextBox Grid.Row="1" 
+                                FontSize="20" 
+                                PlaceholderText="Edit anime description..." 
+                                AcceptsReturn="True" 
+                                TextWrapping="Wrap"
+                                Text="{Binding DescriptionInput}"/>
+                        <t:IconButton Grid.Row="2"
+                                IsVisible="{Binding IsAddMode}"
+                                FontSize="20"
+                                IconText="&#xe3d6;"
+                                Content="Add Anime"
+                                Command="{Binding AddAnimeCommand}"/>
+                        <t:IconButton Grid.Row="2"
+                                IsVisible="{Binding IsEditMode}"
+                                FontSize="20" 
+                                IconText="&#xe5d4;" 
+                                Content="Apply Changes"
+                                Command="{Binding ApplyChangesCommand}"/>
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1">
+                    <Label>hi</Label>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

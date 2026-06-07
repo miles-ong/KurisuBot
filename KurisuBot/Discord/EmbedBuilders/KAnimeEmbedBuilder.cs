@@ -8,7 +8,7 @@ namespace KurisuBot.Discord.EmbedBuilders
     {
         public static async Task<DiscordEmbed> BuildAnimeEmbedAsync(KAnime anime, KUser? reqUser = null)
         {
-            List<KCharacter> characters = await Program.APIClient.Anime.GetCharactersAsync(anime.Id);
+            List<KCharacter> characters = await Program.ApiClient.Anime.GetCharactersAsync(anime.Id);
 
             string description = $"Characters: **{characters.Count}**\n\n" +
                                  anime.Description;

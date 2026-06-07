@@ -8,16 +8,33 @@
         public KVariantAPIClient Variant { get; }
         public KUserAPIClient User { get; }
 
+        private readonly HttpClient _http;
+
         public KurisuAPIClient(string baseUrl, string apiKey)
         {
-            var http = new HttpClient { BaseAddress = new Uri(baseUrl) };
-            http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+            _http = new HttpClient { BaseAddress = new Uri(baseUrl) };
+            _http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 
-            Anime = new KAnimeAPIClient(http);
-            Character = new KCharacterAPIClient(http);
-            CALink = new KCharacterAnimeLinkAPIClient(http);
-            Variant = new KVariantAPIClient(http);
-            User = new KUserAPIClient(http);
+            Anime = new KAnimeAPIClient(_http);
+            Character = new KCharacterAPIClient(_http);
+            CALink = new KCharacterAnimeLinkAPIClient(_http);
+            Variant = new KVariantAPIClient(_http);
+            User = new KUserAPIClient(_http);
         }
+
+        public async Task<bool> CheckHealthAsync()
+        {
+            try
+            {
+                var response = await _http.GetAsync("health");
+
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
     }
 }
