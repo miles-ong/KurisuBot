@@ -26,12 +26,12 @@ var app = builder.Build();
 
 Console.WriteLine("[KurisuAPI] Initializing services...");
 
-await app.Services.GetRequiredService<KAnimeService>().InitializeAsync();
-await app.Services.GetRequiredService<KCharacterService>().InitializeAsync();
-await app.Services.GetRequiredService<KCharacterAnimeLinkService>().InitializeAsync();
-await app.Services.GetRequiredService<KVariantService>().InitializeAsync();
-app.Services.GetRequiredService<KCardService>().Initialize();
-app.Services.GetRequiredService<KUserService>().Initialize();
+//await app.Services.GetRequiredService<KAnimeService>().InitializeAsync();
+//await app.Services.GetRequiredService<KCharacterService>().InitializeAsync();
+//await app.Services.GetRequiredService<KCharacterAnimeLinkService>().InitializeAsync();
+//await app.Services.GetRequiredService<KVariantService>().InitializeAsync();
+//app.Services.GetRequiredService<KCardService>().Initialize();
+//app.Services.GetRequiredService<KUserService>().Initialize();
 
 Console.WriteLine("[KurisuAPI] Successfully initialized services");
 
