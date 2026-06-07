@@ -5,21 +5,16 @@ using KurisuCore.Models;
 
 namespace KurisuAPI.Services;
 
-public sealed class KUserService
+public sealed class KUserService(
+    KUserRepository repository, 
+    KUserCache cache,
+    KCardService cardService
+    )
 {
-    private readonly KUserRepository _repository;
-    private readonly KCardService _cardService;
-    private readonly Func<long, Task<string>> _usernameResolver;
+    private readonly Func<long, Task<string>> _usernameResolver = _ => Task.FromResult(string.Empty);
     private readonly int _saveLoopIntervalMinutes = 1;
     private CancellationTokenSource _cts = new();
     private const string _consoleTag = "[KUserService]";
-
-    public KUserService(string connectionString, KCardService cardService, Func<long, Task<string>>? usernameResolver = null)
-    {
-        _repository = new KUserRepository(connectionString);
-        _cardService = cardService;
-        _usernameResolver = usernameResolver ?? (_ => Task.FromResult(string.Empty));
-    }
 
     public void Initialize()
     {
@@ -29,9 +24,9 @@ public sealed class KUserService
 
     public async Task<KUser> GetOrCreateAsync(long id)
     {
-        if (KUserCache.TryGet(id, out KUser? cached)) return cached!;
+        if (cache.TryGet(id, out KUser? cached)) return cached!;
 
-        KUser? user = await _repository.GetByIdAsync(id);
+        KUser? user = await repository.GetByIdAsync(id);
 
         if(user is null)
         {
@@ -42,17 +37,17 @@ public sealed class KUserService
         {
             string username = await _usernameResolver(id);
             user.SetUsername(username);
-            await _cardService.LoadUserCardsAsync(user);
+            await cardService.LoadUserCardsAsync(user);
         }
 
-        KUserCache.Add(user);
+        cache.Add(user);
 
         return user;
     }
 
     public void MarkDirty(KUser user)
     {
-        KUserCache.MarkDirty(user);
+        cache.MarkDirty(user);
     }
 
     public async Task StartSaveLoopAsync()
@@ -89,7 +84,7 @@ public sealed class KUserService
 
         user.SetBalance(KBalance.QuizTokens, user.Settings.MaxQuizTokens);
 
-        KUserCache.MarkDirty(user);
+        cache.MarkDirty(user);
         Console.WriteLine($"{_consoleTag} Created new user {user}");
 
         return user;
@@ -97,13 +92,13 @@ public sealed class KUserService
 
     private async Task SaveDirtyUsersAsync(CancellationToken token)
     {
-        HashSet<KUser> users = KUserCache.TakeDirty();
+        HashSet<KUser> users = cache.TakeDirty();
 
         if (users.Count == 0) return;
 
         try
         {
-            await _repository.BulkUpsertAsync(users, token);
+            await repository.BulkUpsertAsync(users, token);
             Console.WriteLine($"{_consoleTag} Saved {users.Count} users' data");
         }
         catch (Exception ex)
@@ -112,7 +107,7 @@ public sealed class KUserService
 
             foreach(KUser user in users)
             {
-                KUserCache.MarkDirty(user);
+                cache.MarkDirty(user);
             }
         }
     }

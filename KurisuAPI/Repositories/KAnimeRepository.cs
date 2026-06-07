@@ -1,15 +1,59 @@
-﻿using KurisuCore.Models;
+﻿using KurisuAPI.Factories;
+using KurisuCore.Models;
 using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    internal sealed class KAnimeRepository
+    public sealed class KAnimeRepository(DbConnectionFactory factory)
     {
-        private readonly string _connectionString;
-
-        public KAnimeRepository(string connectionString)
+        public async Task<KAnime?> GetByIdAsync(int id)
         {
-            _connectionString = connectionString;
+            const string sql = "SELECT id, title, description FROM animeinfo WHERE id = @id";
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync()) return null;
+
+            return new KAnime(
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2)
+            );
+        }
+
+        public async Task<List<KAnime>> SearchAsync(string query, int limit)
+        {
+            const string sql = """
+                SELECT id, title, description
+                FROM animeinfo
+                WHERE title ILIKE @query
+                LIMIT @limit
+            """;
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@query", $"%{query}%");
+            command.Parameters.AddWithValue("@limit", limit);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            List<KAnime> result = new();
+
+            while (await reader.ReadAsync())
+            {
+                result.Add(new KAnime(
+                    reader.GetInt32(0),
+                    reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2)
+                ));
+            }
+
+            return result;
         }
 
         public async Task<KAnime> InsertAsync(string title, string? description)
@@ -20,8 +64,7 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@title", title);
@@ -41,8 +84,7 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", anime.Id);
@@ -58,8 +100,7 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM animeinfo WHERE id = @id";
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -67,29 +108,6 @@ namespace KurisuAPI.Repositories
             int rows = await command.ExecuteNonQueryAsync();
 
             if (rows <= 0) throw new KeyNotFoundException($"Failed to find anime (ID: {id}) in database.");
-        }
-
-        public async Task<List<KAnime>> GetAllAsync()
-        {
-            const string sql = "SELECT id, title, description FROM animeinfo";
-
-            List<KAnime> result = new();
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                result.Add(new KAnime(
-                    reader.GetInt32(0),
-                    reader.GetString(1),
-                    reader.IsDBNull(2) ? null : reader.GetString(2)
-                ));
-            }
-
-            return result;
         }
     }
 }

@@ -1,22 +1,19 @@
 ﻿using KurisuAPI.Cache;
+using KurisuAPI.Records;
 using KurisuAPI.Repositories;
 using KurisuCore.Models;
 
 namespace KurisuAPI.Services;
 
-public sealed class KCardService
+public sealed class KCardService(
+    KCardRepository repository, 
+    KCardCache cache,
+    KVariantService variantService
+    )
 {
-    private readonly KCardRepository _repository;
-    private readonly KVariantService _variantService;
     private readonly int _saveLoopIntervalMinutes = 1;
     private CancellationTokenSource _cts = new();
     private const string _consoleTag = "[KCardService]";
-
-    public KCardService(string connectionString, KVariantService variantService)
-    {
-        _repository = new KCardRepository(connectionString);
-        _variantService = variantService;
-    }
 
     public void Initialize()
     {
@@ -26,17 +23,23 @@ public sealed class KCardService
 
     public async Task<IEnumerable<KCard>> LoadUserCardsAsync(KUser user)
     {
-        List<(long id, int variantId, DateTime timeObtained, int? borderId, int? overlayId)> cards = await _repository.GetByOwnerAsync(user.Id);
+        List<KCardRow> cards = await repository.GetByOwnerAsync(user.Id);
 
-        foreach(var c in cards)
+        foreach(KCardRow c in cards)
         {
-            if (!_variantService.TryGet(c.variantId, out KVariant? variant))
-            {
-                Console.WriteLine($"{_consoleTag} '{c.variantId}' Variant ID does not exist, skipping...");
-                continue;
-            }
+            KVariant? variant = await variantService.GetByIdAsync(c.VariantId);
 
-            KCard card = new KCard(c.id, user, variant!, c.timeObtained, c.borderId, c.overlayId);
+            if (variant is null) continue;
+
+            KCard card = new(
+                c.Id,
+                user,
+                variant,
+                c.TimeObtained,
+                c.BorderId,
+                c.OverlayId
+            );
+
             user.AddCard(card);
         }
 
@@ -45,7 +48,7 @@ public sealed class KCardService
 
     public void MarkDirty(KCard card)
     {
-        KCardCache.MarkDirty(card);
+        cache.MarkDirty(card);
     }
 
     public async Task StartSaveLoopAsync()
@@ -77,13 +80,13 @@ public sealed class KCardService
 
     private async Task SaveDirtyCardsAsync(CancellationToken token)
     {
-        HashSet<KCard> cards = KCardCache.TakeDirty();
+        HashSet<KCard> cards = cache.TakeDirty();
 
         if (cards.Count == 0) return;
 
         try
         {
-            await _repository.BulkUpsertAsync(cards, token);
+            await repository.BulkUpsertAsync(cards, token);
             Console.WriteLine($"{_consoleTag} Saved {cards.Count} cards' data");
         }
         catch (Exception ex)
@@ -92,7 +95,7 @@ public sealed class KCardService
 
             foreach(KCard card in cards)
             {
-                KCardCache.MarkDirty(card);
+                cache.MarkDirty(card);
             }
         }
     }

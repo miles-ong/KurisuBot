@@ -1,16 +1,33 @@
-﻿using KurisuCore.Enums;
+﻿using KurisuAPI.Factories;
+using KurisuAPI.Records;
+using KurisuCore.Enums;
 using KurisuCore.Models;
 using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    internal sealed class KVariantRepository
+    public sealed class KVariantRepository(DbConnectionFactory factory)
     {
-        private readonly string _connectionString;
-
-        public KVariantRepository(string connectionString)
+        public async Task<KVariantRow?> GetByIdAsync(int id)
         {
-            _connectionString = connectionString;
+            const string sql = "SELECT id, character_id, anime_id, rarity, title FROM variantinfo WHERE id = @id";
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync()) return null;
+
+            return new KVariantRow(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetInt32(2),
+                Enum.Parse<KRarity>(reader.GetString(3)),
+                reader.GetString(4)
+            );
         }
 
         public async Task<int> InsertAsync(int cid, int aid, KRarity rarity, string title)
@@ -21,8 +38,7 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@cid", cid);
@@ -42,8 +58,7 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", variant.Id);
@@ -59,8 +74,7 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM variantinfo WHERE id = @id";
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -68,31 +82,6 @@ namespace KurisuAPI.Repositories
             int rows = await command.ExecuteNonQueryAsync();
 
             if (rows <= 0) throw new KeyNotFoundException($"Failed to find variant (ID: {id}) in database.");
-        }
-
-        public async Task<List<(int id, int cid, int aid, KRarity rarity, string title)>> GetAllAsync()
-        {
-            const string sql = "SELECT id, character_id, anime_id, rarity, title FROM variantinfo";
-
-            List<(int, int, int, KRarity, string)> variants = new();
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                variants.Add((
-                    reader.GetInt32(0),
-                    reader.GetInt32(1),
-                    reader.GetInt32(2),
-                    Enum.Parse<KRarity>(reader.GetString(3)),
-                    reader.GetString(4)
-                ));
-            }
-
-            return variants;
         }
     }
 }

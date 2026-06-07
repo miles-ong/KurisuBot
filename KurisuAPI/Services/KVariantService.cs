@@ -1,4 +1,5 @@
 ﻿using KurisuAPI.Cache;
+using KurisuAPI.Records;
 using KurisuAPI.Repositories;
 using KurisuCore.Enums;
 using KurisuCore.Models;
@@ -7,68 +8,70 @@ using Npgsql;
 
 namespace KurisuAPI.Services;
 
-public sealed class KVariantService
+public sealed class KVariantService(
+    KVariantRepository repository, 
+    KVariantCache cache,
+    KAnimeService animeService, 
+    KCharacterService characterService
+    )
 {
-    private readonly KVariantRepository _repository;
     private const string _consoleTag = "[KVariantService]";
 
-    public KVariantService(string connectionString)
+    public async Task<KVariant?> GetByIdAsync(int id)
     {
-        _repository = new KVariantRepository(connectionString);
-    }
+        if (cache.TryGet(id, out KVariant? cached)) return cached;
 
-    public async Task InitializeAsync()
-    {
-        var all = await _repository.GetAllAsync();
-        int count = 0;
+        KVariantRow? variantRow = await repository.GetByIdAsync(id);
 
-        foreach(var (id, cid, aid, rarity, title) in all)
+        if (variantRow is null) return null;
+
+        KAnime? anime = await animeService.GetByIdAsync(variantRow.AnimeId);
+
+        if (anime is null)
         {
-            if(!KCharacterCache.TryGet(cid, out KCharacter? character))
-            {
-                Console.WriteLine($"{_consoleTag} Skipping variant (ID: {id}), failed to find character (ID: {cid}) in cache.");
-                continue;
-            }
-
-            if(!KAnimeCache.TryGet(aid, out KAnime? anime))
-            {
-                Console.WriteLine($"{_consoleTag} Skipping variant (ID: {id}), failed to find anime (ID: {aid}) in cache.");
-                continue;
-            }
-
-            if (!character!.ContainsAnime(anime!))
-            {
-                Console.WriteLine($"{_consoleTag} Skipping variant (ID: {id}), character {character} is not from anime {anime}.");
-                continue;
-            }
-
-            KVariant variant = new KVariant(id, character, anime!, rarity, title);
-            KVariantCache.Add(variant);
-            character.AddVariant(variant);
-            count++;
+            Console.WriteLine($"{_consoleTag} Variant deprecated (ID: {id}), failed to find anime (ID: {variantRow.AnimeId}) in cache");
+            return null;
         }
 
-        Console.WriteLine($"{_consoleTag} Initialized {count} variants!");
-    }
+        KCharacter? character = await characterService.GetByIdAsync(variantRow.CharacterId);
 
-    public bool TryGet(int id, out KVariant? variant)
-    {
-        return KVariantCache.TryGet(id, out variant);
+        if (character is null)
+        {
+            Console.WriteLine($"{_consoleTag} Variant deprecated (ID: {id}), failed to find character (ID: {variantRow.CharacterId}) in cache");
+            return null;
+        }
+
+        KVariant variant = new KVariant(
+            variantRow.Id,
+            character,
+            anime,
+            variantRow.Rarity,
+            variantRow.Title
+        );
+
+        character.AddVariant(variant);
+        cache.Add(variant);
+
+        return variant;
     }
 
     public async Task<Result<KVariant>> AddAsync(int cid, int aid, KRarity rarity, string title)
     {
         if (string.IsNullOrWhiteSpace(title)) return Result<KVariant>.Fail(KResult.InvalidVariantTitle);
-        if (!KCharacterCache.TryGet(cid, out KCharacter? character)) return Result<KVariant>.Fail(KResult.CannotFindCharacter);
-        if (!KAnimeCache.TryGet(aid, out KAnime? anime)) return Result<KVariant>.Fail(KResult.CannotFindAnime);
-        if (!character!.ContainsAnime(anime!)) return Result<KVariant>.Fail(KResult.CannotFindCharacterAnimeLink);
+
+        KCharacter? character = await characterService.GetByIdAsync(cid);
+        KAnime? anime = await animeService.GetByIdAsync(aid);
+
+        if (character is null) return Result<KVariant>.Fail(KResult.CannotFindCharacter);
+        if (anime is null) return Result<KVariant>.Fail(KResult.CannotFindAnime);
+        if (character.ContainsAnime(anime!)) return Result<KVariant>.Fail(KResult.CannotFindCharacterAnimeLink);
 
         try
         {
-            int id = await _repository.InsertAsync(cid, aid, rarity, title);
-            KVariant variant = new KVariant(id, character, anime!, rarity, title);
-            KVariantCache.Add(variant);
+            int id = await repository.InsertAsync(cid, aid, rarity, title);
+            KVariant variant = new KVariant(id, character, anime, rarity, title);
             character.AddVariant(variant);
+            cache.Add(variant);
 
             return Result<KVariant>.Ok(variant);
         }
@@ -88,7 +91,7 @@ public sealed class KVariantService
 
     public async Task<KResult> SetRarityAsync(int id, KRarity newRarity)
     {
-        if (!KVariantCache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
+        if (!cache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
 
         KRarity oldRarity = variant!.Rarity;
         KResult modelResult = variant.SetRarity(newRarity);
@@ -97,7 +100,7 @@ public sealed class KVariantService
 
         try
         {
-            await _repository.UpdateAsync(variant);
+            await repository.UpdateAsync(variant);
 
             return KResult.Completed;
         }
@@ -118,7 +121,7 @@ public sealed class KVariantService
 
     public async Task<KResult> SetTitleAsync(int id, string newTitle)
     {
-        if (!KVariantCache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
+        if (!cache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
 
         string oldTitle = variant!.Title;
         KResult modelResult = variant.SetTitle(newTitle);
@@ -127,7 +130,7 @@ public sealed class KVariantService
         
         try
         {
-            await _repository.UpdateAsync(variant);
+            await repository.UpdateAsync(variant);
 
             return KResult.Completed;
         }
@@ -148,12 +151,12 @@ public sealed class KVariantService
 
     public async Task<KResult> DeleteAsync(int id)
     {
-        if (!KVariantCache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
+        if (!cache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
 
         try
         {
-            await _repository.DeleteAsync(id);
-            KVariantCache.Remove(id);
+            await repository.DeleteAsync(id);
+            cache.Remove(id);
             variant!.Character.RemoveVariant(variant);
 
             return KResult.Completed;

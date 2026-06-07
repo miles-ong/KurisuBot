@@ -11,18 +11,20 @@ namespace KurisuAPI.Controllers
     public sealed class KCharacterController(KCharacterService characterService) : ControllerBase
     {
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            if (!characterService.TryGet(id, out KCharacter? character)) return NotFound(KResult.CannotFindCharacter);
+            KCharacter? character = await characterService.GetByIdAsync(id);
+
+            if (character is null) return NotFound(KResult.CannotFindCharacter);
 
             return Ok(character);
         }
 
         [HttpGet("search")]
-        public IActionResult Search([FromQuery] string query, [FromQuery] int limit = 10) => Ok(characterService.Search(query, limit));
+        public IActionResult Search([FromQuery] string query, [FromQuery] int limit = 10) => Ok(characterService.SearchAsync(query, limit));
 
         [HttpPost]
-        public async Task<IActionResult> AddAsync([FromBody] string name)
+        public async Task<IActionResult> Add([FromBody] string name)
         {
             Result<KCharacter> result = await characterService.AddAsync(name);
 
@@ -30,7 +32,7 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpPatch("{id}/name")]
-        public async Task<IActionResult> SetNameAsync(int id, [FromBody] string newName)
+        public async Task<IActionResult> SetName(int id, [FromBody] string newName)
         {
             KResult result = await characterService.SetNameAsync(id, newName);
 
@@ -38,7 +40,7 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAsync(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             KResult result = await characterService.DeleteAsync(id);
 

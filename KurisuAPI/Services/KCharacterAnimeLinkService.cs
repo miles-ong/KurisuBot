@@ -1,58 +1,61 @@
-﻿using KurisuAPI.Cache;
-using KurisuAPI.Repositories;
+﻿using KurisuAPI.Repositories;
 using KurisuCore.Enums;
 using KurisuCore.Models;
 
 namespace KurisuAPI.Services;
 
-public sealed class KCharacterAnimeLinkService
+public sealed class KCharacterAnimeLinkService(
+    KCharacterAnimeLinkRepository repository, 
+    KAnimeService animeService, 
+    KCharacterService characterService
+    )
 {
-    private readonly KCharacterAnimeLinkRepository _repository;
     private const string _consoleTag = "[KCharacterAnimeLinkService]";
 
-    public KCharacterAnimeLinkService(string connectionString)
+    public async Task LoadLinksAsync(KAnime anime)
     {
-        _repository = new KCharacterAnimeLinkRepository(connectionString);
+        List<int> cids = await repository.GetByAnimeIdAsync(anime.Id);
+
+        foreach (int cid in cids)
+        {
+            KCharacter? character = await characterService.GetByIdAsync(cid);
+
+            if (character is null) continue;
+
+            anime.LinkCharacter(character);
+            character.LinkAnime(anime);
+        }
     }
 
-    public async Task InitializeAsync()
+    public async Task LoadLinksAsync(KCharacter character)
     {
-        var links = await _repository.GetAllAsync();
-        int count = 0;
+        List<int> aids = await repository.GetByCharacterIdAsync(character.Id);
 
-        foreach(var (cid, aid) in links)
+        foreach (int aid in aids)
         {
-            if(!KCharacterCache.TryGet(cid, out KCharacter? character))
-            {
-                Console.WriteLine($"{_consoleTag} Skipping link, failed to find character (ID: {cid}) in cache.");
-                continue;
-            }
+            KAnime? anime = await animeService.GetByIdAsync(aid);
 
-            if(!KAnimeCache.TryGet(aid, out KAnime? anime))
-            {
-                Console.WriteLine($"{_consoleTag} Skipping link, failed to find anime (ID: {aid}) in cache.");
-                continue;
-            }
+            if (anime is null) continue;
 
-            character!.LinkAnime(anime!);
-            anime!.LinkCharacter(character);
-            count++;
+            anime.LinkCharacter(character);
+            character.LinkAnime(anime);
         }
-
-        Console.WriteLine($"{_consoleTag} Initialized {count} links.");
     }
 
     public async Task<KResult> LinkAsync(int cid, int aid)
     {
-        if (!KCharacterCache.TryGet(cid, out KCharacter? character)) return KResult.CannotFindCharacter;
-        if (!KAnimeCache.TryGet(aid, out KAnime? anime)) return KResult.CannotFindAnime;
-        if (character!.ContainsAnime(anime!)) return KResult.CharacterAnimeLinkAlreadyExists;
+        KCharacter? character = await characterService.GetByIdAsync(cid);
+        KAnime? anime = await animeService.GetByIdAsync(aid);
+
+        if (character is null) return KResult.CannotFindCharacter;
+        if (anime is null) return KResult.CannotFindAnime;
+        if (character.ContainsAnime(anime)) return KResult.CharacterAnimeLinkAlreadyExists;
 
         try
         {
-            await _repository.InsertAsync(cid, aid);
-            character.LinkAnime(anime!);
-            anime!.LinkCharacter(character);
+            await repository.InsertAsync(cid, aid);
+            character.LinkAnime(anime);
+            anime.LinkCharacter(character);
 
             return KResult.Completed;
         }
@@ -66,14 +69,17 @@ public sealed class KCharacterAnimeLinkService
 
     public async Task<KResult> UnlinkAsync(int cid, int aid)
     {
-        if (!KCharacterCache.TryGet(cid, out KCharacter? character)) return KResult.CannotFindCharacter;
-        if (!KAnimeCache.TryGet(aid, out KAnime? anime)) return KResult.CannotFindAnime;
-        if (!character!.ContainsAnime(anime!)) return KResult.CharacterAnimeLinkDoesNotExist;
+        KCharacter? character = await characterService.GetByIdAsync(cid);
+        KAnime? anime = await animeService.GetByIdAsync(aid);
+
+        if (character is null) return KResult.CannotFindCharacter;
+        if (anime is null) return KResult.CannotFindAnime;
+        if (!character.ContainsAnime(anime)) return KResult.CharacterAnimeLinkDoesNotExist;
 
         try
         {
-            await _repository.DeleteAsync(cid, aid);
-            character.UnlinkAnime(anime!);
+            await repository.DeleteAsync(cid, aid);
+            character.UnlinkAnime(anime);
             anime!.UnlinkCharacter(character);
             
             return KResult.Completed;

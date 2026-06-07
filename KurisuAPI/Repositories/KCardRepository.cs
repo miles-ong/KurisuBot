@@ -1,19 +1,14 @@
-﻿using KurisuCore.Models;
+﻿using KurisuAPI.Factories;
+using KurisuAPI.Records;
+using KurisuCore.Models;
 using Npgsql;
 using NpgsqlTypes;
 
 namespace KurisuAPI.Repositories
 {
-    internal sealed class KCardRepository
+    public sealed class KCardRepository(DbConnectionFactory factory)
     {
-        private readonly string _connectionString;
-
-        public KCardRepository(string connectionString)
-        {
-            _connectionString = connectionString;
-        }
-
-        public async Task<List<(long id, int variantId, DateTime timeObtained, int? borderId, int? overlayId)>> GetByOwnerAsync(long ownerId)
+        public async Task<List<KCardRow>> GetByOwnerAsync(long ownerId)
         {
             const string sql = """
                 SELECT id, variantid, timeobtained, borderid, overlayid
@@ -21,25 +16,25 @@ namespace KurisuAPI.Repositories
                 WHERE ownerid = @ownerid
             """;
 
-            var cards = new List<(long, int, DateTime, int?, int?)>();
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@ownerid", ownerId);
 
+            List<KCardRow> cards = new();
             await using var reader = await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
-                long id = reader.GetInt64(0);
-                int variantId = reader.GetInt32(1);
-                DateTime timeObtained = DateTime.SpecifyKind(reader.GetDateTime(2), DateTimeKind.Utc);
-                int? borderId = reader.IsDBNull(3) ? null : reader.GetInt32(3);
-                int? overlayId = reader.IsDBNull(4) ? null : reader.GetInt32(4);
+                KCardRow row = new(
+                    reader.GetInt64(0),
+                    reader.GetInt32(1),
+                    DateTime.SpecifyKind(reader.GetDateTime(2), DateTimeKind.Utc),
+                    reader.IsDBNull(3) ? null : reader.GetInt32(3),
+                    reader.IsDBNull(4) ? null : reader.GetInt32(4)
+                );
 
-                cards.Add((id, variantId, timeObtained, borderId, overlayId));
+                cards.Add(row);
             }
 
             return cards;
@@ -47,8 +42,7 @@ namespace KurisuAPI.Repositories
 
         public async Task BulkUpsertAsync(IEnumerable<KCard> cards, CancellationToken token)
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync(token);
             await using var transaction = await connection.BeginTransactionAsync(token);
 
             const string tempSql = """

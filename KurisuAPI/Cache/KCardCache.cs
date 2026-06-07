@@ -2,17 +2,17 @@
 
 namespace KurisuAPI.Cache
 {
-    internal static class KCardCache
+    public sealed class KCardCache
     {
-        private static readonly HashSet<KCard> _dirtyCards = new();
-        private static readonly object _lock = new();
+        private readonly HashSet<KCard> _dirtyCards = new();
+        private readonly object _lock = new();
 
-        public static void MarkDirty(KCard card)
+        public void MarkDirty(KCard card)
         {
             lock (_lock) _dirtyCards.Add(card);
         }
 
-        public static HashSet<KCard> TakeDirty()
+        public HashSet<KCard> TakeDirty()
         {
             lock (_lock)
             {

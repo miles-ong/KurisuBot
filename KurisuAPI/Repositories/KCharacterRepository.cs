@@ -1,15 +1,57 @@
-﻿using KurisuCore.Models;
+﻿using KurisuAPI.Factories;
+using KurisuCore.Models;
 using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    internal sealed class KCharacterRepository
+    public sealed class KCharacterRepository(DbConnectionFactory factory)
     {
-        private readonly string _connectionString;
-
-        public KCharacterRepository(string connectionString)
+        public async Task<KCharacter?> GetByIdAsync(int id)
         {
-            _connectionString = connectionString;
+            const string sql = "SELECT id, name FROM characterinfo WHERE id = @id";
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync()) return null;
+
+            return new KCharacter(
+                reader.GetInt32(0),
+                reader.GetString(1)
+            );
+        }
+
+        public async Task<List<KCharacter>> SearchAsync(string query, int limit)
+        {
+            const string sql = """
+                SELECT id, name
+                FROM characterinfo
+                WHERE name ILIKE @query
+                LIMIT @limit
+            """;
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@query", $"%{query}%");
+            command.Parameters.AddWithValue("@limit", limit);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            List<KCharacter> result = new();
+
+            while (await reader.ReadAsync())
+            {
+                result.Add(new KCharacter(
+                    reader.GetInt32(0),
+                    reader.GetString(1)
+                ));
+            }
+
+            return result;
         }
 
         public async Task<KCharacter> InsertAsync(string name)
@@ -20,8 +62,7 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@name", name);
@@ -39,8 +80,7 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", character.Id);
@@ -55,8 +95,7 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM characterinfo WHERE id = @id";
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -64,28 +103,6 @@ namespace KurisuAPI.Repositories
             int rows = await command.ExecuteNonQueryAsync();
 
             if (rows <= 0) throw new KeyNotFoundException($"Failed to find character (ID: {id}) in database.");
-        }
-
-        public async Task<List<KCharacter>> GetAllAsync()
-        {
-            const string sql = "SELECT id, name FROM characterinfo";
-
-            List<KCharacter> characters = new();
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                characters.Add(new KCharacter(
-                    reader.GetInt32(0),
-                    reader.GetString(1)
-                ));
-            }
-
-            return characters;
         }
     }
 }

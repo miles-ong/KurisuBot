@@ -7,46 +7,53 @@ using Npgsql;
 
 namespace KurisuAPI.Services;
 
-public sealed class KAnimeService
+public sealed class KAnimeService(
+    KAnimeRepository repository, 
+    KAnimeCache cache,
+    KCharacterAnimeLinkService linkService
+    )
 {
-    private readonly KAnimeRepository _repository;
     private const string _consoleTag = "[KAnimeService]";
 
-    public KAnimeService(string connectionString)
+    public async Task<KAnime?> GetByIdAsync(int id)
     {
-        _repository = new KAnimeRepository(connectionString);
-    }
+        if (cache.TryGet(id, out KAnime? cached)) return cached;
 
-    public async Task InitializeAsync()
-    {
-        List<KAnime> all = await _repository.GetAllAsync();
+        KAnime? anime = await repository.GetByIdAsync(id);
 
-        foreach(KAnime anime in all)
+        if (anime is not null)
         {
-            KAnimeCache.Add(anime);
+            await linkService.LoadLinksAsync(anime);
+            cache.Add(anime);
         }
 
-        Console.WriteLine($"{_consoleTag} Initialized {all.Count} animes");
+        return anime;
     }
 
-    public bool TryGet(int id, out KAnime? anime)
+    public async Task<IEnumerable<KAnime>> SearchAsync(string query, int limit = 10)
     {
-        return KAnimeCache.TryGet(id, out anime);
-    }
+        List<KAnime> cached = cache.Search(query, limit).ToList();
 
-    public IEnumerable<KAnime> Search(string query, int limit = 10)
-    {
-        return KAnimeCache.Search(query, limit);
+        if (cached.Count >= limit) return cached;
+
+        List<KAnime> animes = await repository.SearchAsync(query, limit);
+
+        foreach(KAnime anime in animes)
+        {
+            cache.Add(anime);
+        }
+
+        return animes;
     }
 
     public async Task<Result<KAnime>> AddAsync(string title, string? description = null)
     {
-        if (KAnimeCache.TryGetByTitle(title, out _)) return Result<KAnime>.Fail(KResult.AnimeAlreadyExists);
+        if (cache.TryGetByTitle(title, out _)) return Result<KAnime>.Fail(KResult.AnimeAlreadyExists);
 
         try
         {
-            KAnime anime = await _repository.InsertAsync(title, description);
-            KAnimeCache.Add(anime);
+            KAnime anime = await repository.InsertAsync(title, description);
+            cache.Add(anime);
 
             return Result<KAnime>.Ok(anime);
         }
@@ -66,7 +73,7 @@ public sealed class KAnimeService
 
     public async Task<KResult> SetTitleAsync(int id, string newTitle)
     {
-        if (!KAnimeCache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
+        if (!cache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
 
         string oldTitle = anime!.Title;
         KResult modelResult = anime.SetTitle(newTitle);
@@ -75,8 +82,8 @@ public sealed class KAnimeService
 
         try
         {
-            await _repository.UpdateAsync(anime);
-            KAnimeCache.UpdateTitle(anime);
+            await repository.UpdateAsync(anime);
+            cache.UpdateTitle(anime);
 
             return KResult.Completed;
         }
@@ -97,7 +104,7 @@ public sealed class KAnimeService
 
     public async Task<KResult> SetDescriptionAsync(int id, string newDescription)
     {
-        if (!KAnimeCache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
+        if (!cache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
 
         string oldDescription = anime!.Description;
         KResult modelResult = anime.SetDescription(newDescription);
@@ -106,7 +113,7 @@ public sealed class KAnimeService
 
         try
         {
-            await _repository.UpdateAsync(anime);
+            await repository.UpdateAsync(anime);
 
             return KResult.Completed;
         }
@@ -127,12 +134,12 @@ public sealed class KAnimeService
 
     public async Task<KResult> DeleteAsync(int id)
     {
-        if (!KAnimeCache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
+        if (!cache.TryGet(id, out KAnime? anime)) return KResult.CannotFindAnime;
 
         try
         {
-            await _repository.DeleteAsync(id);
-            KAnimeCache.Remove(id);
+            await repository.DeleteAsync(id);
+            cache.Remove(id);
 
             return KResult.Completed;
         }

@@ -4,30 +4,29 @@ using System.Collections.Concurrent;
 
 namespace KurisuAPI.Cache
 {
-    internal static class KAnimeCache
+    public sealed class KAnimeCache
     {
-        private static readonly ConcurrentDictionary<int, KAnime> _cache = new();
-        private static readonly ConcurrentDictionary<string, KAnime> _titleIndex =
+        private readonly ConcurrentDictionary<int, KAnime> _cache = new();
+        private readonly ConcurrentDictionary<string, KAnime> _titleIndex =
             new(StringComparer.OrdinalIgnoreCase);
-        public static IEnumerable<KAnime> All => _cache.Values;
 
-        public static bool TryGet(int id, out KAnime? anime)
+        public bool TryGet(int id, out KAnime? anime)
         {
             return _cache.TryGetValue(id, out anime);
         }
 
-        public static bool TryGetByTitle(string title, out KAnime? anime)
+        public bool TryGetByTitle(string title, out KAnime? anime)
         {
             return _titleIndex.TryGetValue(title, out anime);
         }
 
-        public static void Add(KAnime anime)
+        public void Add(KAnime anime)
         {
             _cache.TryAdd(anime.Id, anime);
             _titleIndex.TryAdd(anime.Title, anime);
         }
 
-        public static void Remove(int id)
+        public void Remove(int id)
         {
             if(_cache.TryRemove(id, out var anime))
             {
@@ -35,7 +34,7 @@ namespace KurisuAPI.Cache
             }
         }
 
-        public static void UpdateTitle(KAnime anime)
+        public void UpdateTitle(KAnime anime)
         {
             var stale = _titleIndex
                 .Where(x => x.Value.Id == anime.Id)
@@ -50,7 +49,7 @@ namespace KurisuAPI.Cache
             _titleIndex.TryAdd(anime.Title, anime);
         }
 
-        public static IEnumerable<KAnime> Search(string query, int limit = 10)
+        public IEnumerable<KAnime> Search(string query, int limit = 10)
         {
             if (TryGetByTitle(query, out KAnime? exact)) return [exact!];
 

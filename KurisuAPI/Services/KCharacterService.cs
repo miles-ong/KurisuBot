@@ -7,46 +7,53 @@ using Npgsql;
 
 namespace KurisuAPI.Services;
 
-public sealed class KCharacterService
+public sealed class KCharacterService(
+    KCharacterRepository repository, 
+    KCharacterCache cache,
+    KCharacterAnimeLinkService linkService
+    )
 {
-    private readonly KCharacterRepository _repository;
     private const string _consoleTag = "[KCharacterService]";
 
-    public KCharacterService(string connectionString)
+    public async Task<KCharacter?> GetByIdAsync(int id)
     {
-        _repository = new KCharacterRepository(connectionString);
-    }
+        if (cache.TryGet(id, out KCharacter? cached)) return cached;
 
-    public async Task InitializeAsync()
-    {
-        List<KCharacter> all = await _repository.GetAllAsync();
+        KCharacter? character = await repository.GetByIdAsync(id);
 
-        foreach(KCharacter character in all)
+        if (character is not null)
         {
-            KCharacterCache.Add(character);
+            await linkService.LoadLinksAsync(character);
+            cache.Add(character);
         }
 
-        Console.WriteLine($"{_consoleTag} Initialized {all.Count} characters");
+        return character;
     }
 
-    public bool TryGet(int id, out KCharacter? character)
+    public async Task<IEnumerable<KCharacter>> SearchAsync(string query, int limit = 10)
     {
-        return KCharacterCache.TryGet(id, out character);
-    }
+        List<KCharacter> cached = cache.Search(query, limit).ToList();
 
-    public IEnumerable<KCharacter> Search(string query, int limit = 10)
-    {
-        return KCharacterCache.Search(query, limit);
+        if (cached.Count >= limit) return cached;
+
+        List<KCharacter> characters = await repository.SearchAsync(query, limit);
+
+        foreach (KCharacter character in characters)
+        {
+            cache.Add(character);
+        }
+
+        return characters;
     }
 
     public async Task<Result<KCharacter>> AddAsync(string name)
     {
-        if (KCharacterCache.TryGetByName(name, out _)) return Result<KCharacter>.Fail(KResult.IdenticalCharacterName);
+        if (cache.TryGetByName(name, out _)) return Result<KCharacter>.Fail(KResult.IdenticalCharacterName);
 
         try
         {
-            KCharacter character = await _repository.InsertAsync(name);
-            KCharacterCache.Add(character);
+            KCharacter character = await repository.InsertAsync(name);
+            cache.Add(character);
 
             return Result<KCharacter>.Ok(character);
         }
@@ -66,7 +73,7 @@ public sealed class KCharacterService
 
     public async Task<KResult> SetNameAsync(int id, string newName)
     {
-        if (!KCharacterCache.TryGet(id, out KCharacter? character)) return KResult.CannotFindCharacter;
+        if (!cache.TryGet(id, out KCharacter? character)) return KResult.CannotFindCharacter;
 
         string oldName = character!.Name;
         KResult modelResult = character.SetName(newName);
@@ -75,8 +82,8 @@ public sealed class KCharacterService
 
         try
         {
-            await _repository.UpdateAsync(character);
-            KCharacterCache.UpdateName(character);
+            await repository.UpdateAsync(character);
+            cache.UpdateName(character);
 
             return KResult.Completed;
         }
@@ -97,12 +104,12 @@ public sealed class KCharacterService
 
     public async Task<KResult> DeleteAsync(int id)
     {
-        if (!KCharacterCache.TryGet(id, out KCharacter? character)) return KResult.CannotFindCharacter;
+        if (!cache.TryGet(id, out KCharacter? character)) return KResult.CannotFindCharacter;
 
         try
         {
-            await _repository.DeleteAsync(id);
-            KCharacterCache.Remove(id);
+            await repository.DeleteAsync(id);
+            cache.Remove(id);
 
             return KResult.Completed;
         }

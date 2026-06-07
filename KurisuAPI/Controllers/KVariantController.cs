@@ -6,18 +6,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KurisuAPI.Controllers
 {
+    [ApiController]
+    [Route("variant")]
     public sealed class KVariantController(KVariantService variantService) : ControllerBase
     {
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            if (!variantService.TryGet(id, out KVariant? variant)) return NotFound(KResult.CannotFindVariant);
+            KVariant? variant = await variantService.GetByIdAsync(id);
+
+            if (variant is null) return NotFound(KResult.CannotFindVariant);
 
             return Ok(variant);
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddAsync([FromBody] AddVariantRequest req)
+        public async Task<IActionResult> Add([FromBody] AddVariantRequest req)
         {
             Result<KVariant> result = await variantService.AddAsync(req.CharacterId, req.AnimeId, req.Rarity, req.Title);
 
@@ -25,7 +29,7 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpPatch("{id}/rarity")]
-        public async Task<IActionResult> SetRarityAsync(int id, [FromBody] KRarity newRarity)
+        public async Task<IActionResult> SetRarity(int id, [FromBody] KRarity newRarity)
         {
             KResult result = await variantService.SetRarityAsync(id, newRarity);
 
@@ -33,7 +37,7 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpPatch("{id}/title")]
-        public async Task<IActionResult> SetTitleAsync(int id, [FromBody] string newTitle)
+        public async Task<IActionResult> SetTitle(int id, [FromBody] string newTitle)
         {
             KResult result = await variantService.SetTitleAsync(id, newTitle);
 
@@ -41,7 +45,7 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAsync(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             KResult result = await variantService.DeleteAsync(id);
 

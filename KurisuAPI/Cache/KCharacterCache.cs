@@ -4,30 +4,29 @@ using System.Collections.Concurrent;
 
 namespace KurisuAPI.Cache
 {
-    internal static class KCharacterCache
+    public sealed class KCharacterCache
     {
-        private static readonly ConcurrentDictionary<int, KCharacter> _cache = new();
-        private static readonly ConcurrentDictionary<string, KCharacter> _nameIndex =
+        private readonly ConcurrentDictionary<int, KCharacter> _cache = new();
+        private readonly ConcurrentDictionary<string, KCharacter> _nameIndex =
             new(StringComparer.OrdinalIgnoreCase);
-        public static IEnumerable<KCharacter> All => _cache.Values;
 
-        public static bool TryGet(int id, out KCharacter? character)
+        public bool TryGet(int id, out KCharacter? character)
         {
             return _cache.TryGetValue(id, out character);
         }
 
-        public static bool TryGetByName(string name, out KCharacter? character)
+        public bool TryGetByName(string name, out KCharacter? character)
         {
             return _nameIndex.TryGetValue(name, out character);
         }
 
-        public static void Add(KCharacter character)
+        public void Add(KCharacter character)
         {
             _cache.TryAdd(character.Id, character);
             _nameIndex.TryAdd(character.Name, character);
         }
 
-        public static void Remove(int id)
+        public void Remove(int id)
         {
             if(_cache.TryRemove(id, out var character))
             {
@@ -35,7 +34,7 @@ namespace KurisuAPI.Cache
             }
         }
 
-        public static void UpdateName(KCharacter character)
+        public void UpdateName(KCharacter character)
         {
             var stale = _nameIndex
                 .Where(x => x.Value.Id == character.Id)
@@ -50,7 +49,7 @@ namespace KurisuAPI.Cache
             _nameIndex.TryAdd(character.Name, character);
         }
 
-        public static IEnumerable<KCharacter> Search(string query, int limit = 10)
+        public IEnumerable<KCharacter> Search(string query, int limit = 10)
         {
             if (TryGetByName(query, out KCharacter? exact)) return [exact!];
 

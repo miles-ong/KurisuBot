@@ -3,23 +3,21 @@ using System.Collections.Concurrent;
 
 namespace KurisuAPI.Cache
 {
-    internal static class KVariantCache
+    public sealed class KVariantCache
     {
-        private static readonly ConcurrentDictionary<int, KVariant> _cache = new();
+        private readonly ConcurrentDictionary<int, KVariant> _cache = new();
 
-        public static IEnumerable<KVariant> All => _cache.Values;
-
-        public static bool TryGet(int id, out KVariant? variant)
+        public bool TryGet(int id, out KVariant? variant)
         {
             return _cache.TryGetValue(id, out variant);
         }
 
-        public static void Add(KVariant variant)
+        public void Add(KVariant variant)
         {
             _cache.TryAdd(variant.Id, variant);
         }
 
-        public static void Remove(int id)
+        public void Remove(int id)
         {
             _cache.TryRemove(id, out _);
         }
