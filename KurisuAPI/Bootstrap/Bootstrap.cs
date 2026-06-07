@@ -28,6 +28,8 @@ namespace KurisuAPI.Bootstrap
             collection.AddSingleton<KCharacterService>();
             collection.AddSingleton<KVariantService>();
             collection.AddSingleton<KCharacterAnimeLinkService>();
+            collection.AddSingleton(sp => new Lazy<KCharacterAnimeLinkService>(
+                sp.GetRequiredService<KCharacterAnimeLinkService>));
             collection.AddSingleton<KCardService>();
             collection.AddSingleton<KUserService>();
         }
