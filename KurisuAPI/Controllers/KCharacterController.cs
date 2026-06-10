@@ -21,7 +21,8 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpGet("search")]
-        public IActionResult Search([FromQuery] string query, [FromQuery] int limit = 10) => Ok(characterService.SearchAsync(query, limit));
+        public async Task<IActionResult> Search([FromQuery] string query, [FromQuery] int limit = 10) 
+            => Ok(await characterService.SearchAsync(query, limit));
 
         [HttpPost]
         public async Task<IActionResult> Add([FromBody] string name)
