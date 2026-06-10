@@ -32,7 +32,8 @@ namespace KurisuAPI.Controllers
         }
 
         [HttpGet("search")]
-        public IActionResult Search([FromQuery] string query, [FromQuery] int limit = 10) => Ok(animeService.SearchAsync(query, limit));
+        public async Task<IActionResult> Search([FromQuery] string query, [FromQuery] int limit = 10) 
+            => Ok(await animeService.SearchAsync(query, limit));
 
         [HttpPost]
         public async Task<IActionResult> Add([FromBody] KAnimeRow req)
