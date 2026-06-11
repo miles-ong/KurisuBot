@@ -1,4 +1,5 @@
-﻿using KurisuAPI.Repositories;
+﻿using KurisuAPI.Cache;
+using KurisuAPI.Repositories;
 using KurisuCore.Enums;
 using KurisuCore.Models;
 
@@ -6,8 +7,10 @@ namespace KurisuAPI.Services;
 
 public sealed class KCharacterAnimeLinkService(
     KCharacterAnimeLinkRepository repository, 
-    KAnimeService animeService, 
-    KCharacterService characterService
+    KAnimeRepository animeRepository,
+    KCharacterRepository characterRepository,
+    KAnimeCache animeCache,
+    KCharacterCache characterCache
     )
 {
     private const string _consoleTag = "[KCharacterAnimeLinkService]";
@@ -18,7 +21,7 @@ public sealed class KCharacterAnimeLinkService(
 
         foreach (int cid in cids)
         {
-            KCharacter? character = await characterService.GetByIdAsync(cid);
+            KCharacter? character = await GetCharacterAsync(cid);
 
             if (character is null) continue;
 
@@ -33,7 +36,7 @@ public sealed class KCharacterAnimeLinkService(
 
         foreach (int aid in aids)
         {
-            KAnime? anime = await animeService.GetByIdAsync(aid);
+            KAnime? anime = await GetAnimeAsync(aid);
 
             if (anime is null) continue;
 
@@ -44,8 +47,8 @@ public sealed class KCharacterAnimeLinkService(
 
     public async Task<KResult> LinkAsync(int cid, int aid)
     {
-        KCharacter? character = await characterService.GetByIdAsync(cid);
-        KAnime? anime = await animeService.GetByIdAsync(aid);
+        KCharacter? character = await GetCharacterAsync(cid);
+        KAnime? anime = await GetAnimeAsync(aid);
 
         if (character is null) return KResult.CannotFindCharacter;
         if (anime is null) return KResult.CannotFindAnime;
@@ -69,8 +72,8 @@ public sealed class KCharacterAnimeLinkService(
 
     public async Task<KResult> UnlinkAsync(int cid, int aid)
     {
-        KCharacter? character = await characterService.GetByIdAsync(cid);
-        KAnime? anime = await animeService.GetByIdAsync(aid);
+        KCharacter? character = await GetCharacterAsync(cid);
+        KAnime? anime = await GetAnimeAsync(aid);
 
         if (character is null) return KResult.CannotFindCharacter;
         if (anime is null) return KResult.CannotFindAnime;
@@ -96,5 +99,35 @@ public sealed class KCharacterAnimeLinkService(
 
             return KResult.DatabaseFailure;
         }
+    }
+
+    private async Task<KAnime?> GetAnimeAsync(int id)
+    {
+        if (animeCache.TryGet(id, out KAnime? cached)) return cached;
+
+        KAnime? anime = await animeRepository.GetByIdAsync(id);
+
+        if (anime is not null)
+        {
+            animeCache.Add(anime);
+            await LoadLinksAsync(anime);
+        }
+
+        return anime;
+    }
+
+    private async Task<KCharacter?> GetCharacterAsync(int id)
+    {
+        if (characterCache.TryGet(id, out KCharacter? cached)) return cached;
+
+        KCharacter? character = await characterRepository.GetByIdAsync(id);
+
+        if (character is not null)
+        {
+            characterCache.Add(character);
+            await LoadLinksAsync(character);
+        }
+
+        return character;
     }
 }

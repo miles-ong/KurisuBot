@@ -4,7 +4,6 @@ using KurisuApp.Data;
 using KurisuCore.APIClient;
 using KurisuCore.Models;
 using KurisuCore.Result;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
