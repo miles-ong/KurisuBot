@@ -10,7 +10,7 @@ namespace KurisuAPI.Services;
 public sealed class KAnimeService(
     KAnimeRepository repository, 
     KAnimeCache cache,
-    Lazy<KCharacterAnimeLinkService> linkService
+    KCharacterAnimeLinkService linkService
     )
 {
     private const string _consoleTag = "[KAnimeService]";
@@ -23,7 +23,7 @@ public sealed class KAnimeService(
 
         if (anime is not null)
         {
-            await linkService.Value.LoadLinksAsync(anime);
+            await linkService.LoadLinksAsync(anime);
             cache.Add(anime);
         }
 
