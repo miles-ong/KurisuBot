@@ -11,27 +11,25 @@ namespace KurisuAPI.Bootstrap
         {
             collection.AddSingleton(new DbConnectionFactory(connectionString));
 
-            collection.AddSingleton<KAnimeRepository>();
-            collection.AddSingleton<KCharacterRepository>();
-            collection.AddSingleton<KVariantRepository>();
-            collection.AddSingleton<KCharacterAnimeLinkRepository>();
-            collection.AddSingleton<KUserRepository>();
-            collection.AddSingleton<KCardRepository>();
+            collection.AddScoped<KAnimeRepository>();
+            collection.AddScoped<KCharacterRepository>();
+            collection.AddScoped<KVariantRepository>();
+            collection.AddScoped<KCharacterAnimeLinkRepository>();
+            collection.AddScoped<KUserRepository>();
+            collection.AddScoped<KCardRepository>();
+
+            collection.AddScoped<KAnimeService>();
+            collection.AddScoped<KCharacterService>();
+            collection.AddScoped<KVariantService>();
+            collection.AddScoped<KCharacterAnimeLinkService>();
+            collection.AddScoped<KCardService>();
+            collection.AddScoped<KUserService>();
 
             collection.AddSingleton<KAnimeCache>();
             collection.AddSingleton<KCharacterCache>();
             collection.AddSingleton<KVariantCache>();
             collection.AddSingleton<KCardCache>();
             collection.AddSingleton<KUserCache>();
-
-            collection.AddSingleton<KAnimeService>();
-            collection.AddSingleton<KCharacterService>();
-            collection.AddSingleton<KVariantService>();
-            collection.AddSingleton<KCharacterAnimeLinkService>();
-            collection.AddSingleton(sp => new Lazy<KCharacterAnimeLinkService>(
-                sp.GetRequiredService<KCharacterAnimeLinkService>));
-            collection.AddSingleton<KCardService>();
-            collection.AddSingleton<KUserService>();
         }
     }
 }
