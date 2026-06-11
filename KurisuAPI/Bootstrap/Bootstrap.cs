@@ -30,6 +30,8 @@ namespace KurisuAPI.Bootstrap
             collection.AddSingleton<KVariantCache>();
             collection.AddSingleton<KCardCache>();
             collection.AddSingleton<KUserCache>();
+
+            collection.AddSingleton(sp => new Lazy<KCharacterAnimeLinkService>(sp.GetRequiredService<KCharacterAnimeLinkService>()));
         }
     }
 }
