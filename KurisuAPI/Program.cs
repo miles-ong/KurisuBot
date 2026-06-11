@@ -32,7 +32,7 @@ Console.WriteLine($"{_consoleTag} Successfully initialized services");
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
 
