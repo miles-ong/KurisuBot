@@ -4,14 +4,13 @@ using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCharacterRepository(string connectionString)
+    public sealed class KCharacterRepository(DbConnectionFactory factory)
     {
         public async Task<KCharacter?> GetByIdAsync(int id)
         {
             const string sql = "SELECT id, name FROM characterinfo WHERE id = @id";
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -35,8 +34,7 @@ namespace KurisuAPI.Repositories
                 LIMIT @limit
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@query", $"%{query}%");
@@ -64,8 +62,7 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@name", name);
@@ -83,8 +80,7 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", character.Id);
@@ -99,8 +95,7 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM characterinfo WHERE id = @id";
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);

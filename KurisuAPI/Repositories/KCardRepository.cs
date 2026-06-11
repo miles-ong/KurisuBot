@@ -6,7 +6,7 @@ using NpgsqlTypes;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCardRepository(string connectionString)
+    public sealed class KCardRepository(DbConnectionFactory factory)
     {
         public async Task<List<KCardRow>> GetByOwnerAsync(long ownerId)
         {
@@ -16,8 +16,7 @@ namespace KurisuAPI.Repositories
                 WHERE ownerid = @ownerid
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@ownerid", ownerId);
@@ -43,8 +42,7 @@ namespace KurisuAPI.Repositories
 
         public async Task BulkUpsertAsync(IEnumerable<KCard> cards, CancellationToken token)
         {
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync(token);
+            await using var connection = await factory.CreateAsync(token);
             await using var transaction = await connection.BeginTransactionAsync(token);
 
             const string tempSql = """

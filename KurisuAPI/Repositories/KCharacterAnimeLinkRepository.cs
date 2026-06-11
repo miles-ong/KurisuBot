@@ -3,7 +3,7 @@ using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCharacterAnimeLinkRepository(string connectionString)
+    public sealed class KCharacterAnimeLinkRepository(DbConnectionFactory factory)
     {
         public async Task<List<int>> GetByAnimeIdAsync(int id)
         {
@@ -13,8 +13,7 @@ namespace KurisuAPI.Repositories
                 WHERE anime_id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -38,8 +37,7 @@ namespace KurisuAPI.Repositories
                 WHERE character_id = @id
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -63,8 +61,7 @@ namespace KurisuAPI.Repositories
                 ON CONFLICT DO NOTHING
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@cid", cid);
@@ -80,8 +77,7 @@ namespace KurisuAPI.Repositories
                 WHERE character_id = @cid AND anime_id = @aid
             """;
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
+            await using var connection = await factory.CreateAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@cid", cid);
