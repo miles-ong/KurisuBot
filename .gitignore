@@ -1,6 +1,7 @@
 # Build output
 bin/
 obj/
+publish/
 
 # Visual Studio
 .vs/
@@ -9,6 +10,7 @@ obj/
 
 # Environment & secrets
 .env
+publish.rar
 **/launchSettings.json
 **/PreviewerConfig.cs
 **/Config.cs
