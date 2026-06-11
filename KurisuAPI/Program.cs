@@ -4,8 +4,6 @@ using KurisuAPI.Services;
 
 const string _consoleTag = "[KurisuAPI]";
 
-AppContext.SetSwitch("System.Net.DisableIPv6", true);
-
 var builder = WebApplication.CreateBuilder(args);
 
 Console.WriteLine($"{_consoleTag} Reading environment variables...");
@@ -34,7 +32,7 @@ Console.WriteLine($"{_consoleTag} Successfully initialized services");
 
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-//app.UseHttpsRedirection(); - disabled for railway
+//app.UseHttpsRedirection();
 app.UseMiddleware<ApiKeyMiddleware>();
 app.MapControllers();
 

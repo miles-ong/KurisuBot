@@ -6,7 +6,7 @@ namespace KurisuAPI.Factories
     {
         public async Task<NpgsqlConnection> CreateAsync(CancellationToken? token = null)
         {
-            var connection = new NpgsqlConnection(connectionString);
+            await using var connection = new NpgsqlConnection(connectionString);
 
             if (token is null) await connection.OpenAsync();
             else await connection.OpenAsync((CancellationToken)token);

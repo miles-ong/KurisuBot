@@ -11,6 +11,7 @@ namespace KurisuBot.Discord.AutoCompleters
         {
             string query = ctx.UserInput ?? "";
             List<KAnime> results = await Program.ApiClient.Anime.SearchAsync(query);
+            Console.WriteLine($"Found: {results.Count}");
 
             return results.Select(a => new DiscordAutoCompleteChoice(a.Title, a.Id));
         }

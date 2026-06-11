@@ -13,7 +13,7 @@ namespace KurisuApp.Bootstrap
         {
             collection.AddSingleton(new KurisuAPIClient(Config.ApiUrl, Config.ApiKey));
             collection.AddSingleton<MainViewModel>();
-            collection.AddTransient<AnimePageViewModel>(x => new AnimePageViewModel(x.GetRequiredService<KurisuAPIClient>().Anime));
+            collection.AddTransient(x => new AnimePageViewModel(x.GetRequiredService<KurisuAPIClient>().Anime));
             collection.AddTransient<CharacterPageViewModel>();
             collection.AddTransient<VariantPageViewModel>();
 

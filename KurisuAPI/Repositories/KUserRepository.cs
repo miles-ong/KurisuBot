@@ -6,7 +6,7 @@ using NpgsqlTypes;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KUserRepository(DbConnectionFactory factory)
+    public sealed class KUserRepository(string connectionString)
     {
         public async Task<KUser?> GetByIdAsync(long id)
         {
@@ -16,7 +16,8 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -49,7 +50,8 @@ namespace KurisuAPI.Repositories
 
         public async Task BulkUpsertAsync(IEnumerable<KUser> users, CancellationToken token)
         {
-            await using var connection = await factory.CreateAsync(token);
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(token);
             await using var transaction = await connection.BeginTransactionAsync(token);
 
             const string tempTableSql = """

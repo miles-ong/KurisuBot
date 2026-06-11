@@ -4,13 +4,14 @@ using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KAnimeRepository(DbConnectionFactory factory)
+    public sealed class KAnimeRepository(string connectionString)
     {
         public async Task<KAnime?> GetByIdAsync(int id)
         {
             const string sql = "SELECT id, title, description FROM animeinfo WHERE id = @id";
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -35,7 +36,9 @@ namespace KurisuAPI.Repositories
                 LIMIT @limit
             """;
 
-            await using var connection = await factory.CreateAsync();
+            Console.WriteLine(connectionString);
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@query", $"%{query}%");
@@ -64,7 +67,8 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@title", title);
@@ -84,7 +88,8 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", anime.Id);
@@ -100,7 +105,8 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM animeinfo WHERE id = @id";
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);

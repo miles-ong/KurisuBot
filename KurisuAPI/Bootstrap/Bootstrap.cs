@@ -9,14 +9,12 @@ namespace KurisuAPI.Bootstrap
     {
         public static void RegisterServices(IServiceCollection collection, string connectionString)
         {
-            collection.AddSingleton(new DbConnectionFactory(connectionString));
-
-            collection.AddSingleton<KAnimeRepository>();
-            collection.AddSingleton<KCharacterRepository>();
-            collection.AddSingleton<KVariantRepository>();
-            collection.AddSingleton<KCharacterAnimeLinkRepository>();
-            collection.AddSingleton<KUserRepository>();
-            collection.AddSingleton<KCardRepository>();
+            collection.AddSingleton(_ => new KAnimeRepository(connectionString));
+            collection.AddSingleton(_ => new KCharacterRepository(connectionString));
+            collection.AddSingleton(_ => new KVariantRepository(connectionString));
+            collection.AddSingleton(_ => new KCharacterAnimeLinkRepository(connectionString));
+            collection.AddSingleton(_ => new KUserRepository(connectionString));
+            collection.AddSingleton(_ => new KCardRepository(connectionString));
 
             collection.AddSingleton<KAnimeCache>();
             collection.AddSingleton<KCharacterCache>();

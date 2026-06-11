@@ -6,13 +6,14 @@ using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KVariantRepository(DbConnectionFactory factory)
+    public sealed class KVariantRepository(string connectionString)
     {
         public async Task<KVariantRow?> GetByIdAsync(int id)
         {
             const string sql = "SELECT id, character_id, anime_id, rarity, title FROM variantinfo WHERE id = @id";
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
@@ -38,7 +39,8 @@ namespace KurisuAPI.Repositories
                 RETURNING id
             """;
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@cid", cid);
@@ -58,7 +60,8 @@ namespace KurisuAPI.Repositories
                 WHERE id = @id
             """;
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", variant.Id);
@@ -74,7 +77,8 @@ namespace KurisuAPI.Repositories
         {
             const string sql = "DELETE FROM variantinfo WHERE id = @id";
 
-            await using var connection = await factory.CreateAsync();
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", id);
