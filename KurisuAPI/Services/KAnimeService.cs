@@ -38,9 +38,13 @@ public sealed class KAnimeService(
 
         List<KAnime> animes = await repository.SearchAsync(query, limit);
 
-        foreach(KAnime anime in animes)
+        foreach(KAnime a in animes)
         {
-            cache.Add(anime);
+            if (!cache.TryGet(a.Id, out _))
+            {
+                cache.Add(a);
+                await linkService.LoadLinksAsync(a);
+            }
         }
 
         return animes;

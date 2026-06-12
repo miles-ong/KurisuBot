@@ -38,9 +38,13 @@ public sealed class KCharacterService(
 
         List<KCharacter> characters = await repository.SearchAsync(query, limit);
 
-        foreach (KCharacter character in characters)
+        foreach (KCharacter c in characters)
         {
-            cache.Add(character);
+            if (!cache.TryGet(c.Id, out _))
+            {
+                cache.Add(c);
+                await linkService.LoadLinksAsync(c);
+            }
         }
 
         return characters;
