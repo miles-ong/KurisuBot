@@ -24,6 +24,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <MergeResourceInclude Source="/Themes/IconButton.axaml"></MergeResourceInclude>
+                <MergeResourceInclude Source="/Themes/CALinksList.axaml"></MergeResourceInclude>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Colors -->

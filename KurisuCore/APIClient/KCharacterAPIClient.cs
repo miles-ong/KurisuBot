@@ -16,6 +16,15 @@ namespace KurisuCore.APIClient
             return await response.Content.ReadFromJsonAsync<KCharacter>();
         }
 
+        public async Task<List<KAnime>> GetAnimesAsync(int id)
+        {
+            var response = await http.GetAsync($"characters/{id}/animes");
+
+            if (!response.IsSuccessStatusCode) return [];
+
+            return await response.Content.ReadFromJsonAsync<List<KAnime>>() ?? [];
+        }
+
         public async Task<List<KCharacter>> SearchAsync(string query, int limit = 10)
         {
             var response = await http.GetAsync($"characters/search?query={Uri.EscapeDataString(query)}&limit={limit}");

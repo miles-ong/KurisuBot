@@ -3,8 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace KurisuCore.Models
 {
-    public sealed class KAnime
+    public sealed class KAnime : IKurisuDisplayItem
     {
+        public string DisplayName => Title;
         public int Id { get; private set; }
         public string Title { get; private set; }
         public string Description { get; private set; }
@@ -68,5 +69,7 @@ namespace KurisuCore.Models
         }
 
         public override string ToString() => $"'{Title}' (ID: {Id})";
+        public override bool Equals(object? obj) => obj is KAnime other && Id == other.Id;
+        public override int GetHashCode() => Id.GetHashCode();
     }
 }

@@ -12,7 +12,7 @@
     <Design.DataContext><vm:CharacterPageViewModel/></Design.DataContext>
        
     <Border Margin="20">
-        <Grid RowDefinitions="Auto, Auto" RowSpacing="20">
+        <Grid RowDefinitions="Auto, *" RowSpacing="20">
             <AutoCompleteBox Grid.Row="0"
                 x:Name="SearchBox"
                 FontSize="30"
@@ -20,26 +20,58 @@
                 SelectedItem="{Binding SelectedCharacter}"
                 ValueMemberBinding="{Binding Name}"
                 MinimumPrefixLength="2"
-                MinimumPopulateDelay="0:0:0.3">
-            </AutoCompleteBox>
-            <Grid RowDefinitions="Auto, *" RowSpacing="10" Grid.Row="1">
-                <TextBox Grid.Row="0"
-                    FontSize="20"
-                    PlaceholderText="Edit character name..."
-                    Text="{Binding NameInput}">
-                </TextBox>
-                <t:IconButton Grid.Row="1"
-                    IsVisible="{Binding IsAddMode}"
-                    FontSize="20"
-                    IconText="&#xe3d6;"
-                    Content="Add Character"
-                    Command="{Binding AddCharacterCommand}"/>
-                <t:IconButton Grid.Row="1"
-                    IsVisible="{Binding IsEditMode}"
-                    FontSize="20" 
-                    IconText="&#xe5d4;" 
-                    Content="Apply Changes"
-                    Command="{Binding ApplyChangesCommand}"/>
+                MinimumPopulateDelay="0:0:0.3"/>
+            <Grid Grid.Row="1" ColumnDefinitions="3*, 2*" ColumnSpacing="20">
+                <Grid Grid.Column="0" RowDefinitions="Auto, Auto" RowSpacing="10">
+                    <TextBox Grid.Row="0"
+                        FontSize="20"
+                        PlaceholderText="Edit character name..."
+                        Text="{Binding NameInput}"/>
+                    <t:IconButton Grid.Row="1"
+                        IsVisible="{Binding IsAddMode}"
+                        FontSize="20"
+                        IconText="&#xe3d6;"
+                        Content="Add Character"
+                        Command="{Binding AddCharacterCommand}"/>
+                    <t:IconButton Grid.Row="1"
+                        IsVisible="{Binding IsEditMode}"
+                        FontSize="20" 
+                        IconText="&#xe5d4;" 
+                        Content="Apply Changes"
+                        Command="{Binding ApplyChangesCommand}"/>
+                </Grid>
+                <Grid Grid.Column="1" RowDefinitions="Auto, *" RowSpacing="10">
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                        <AutoCompleteBox Grid.Column="0"
+                            x:Name="AnimeSearchBox"
+                            FontSize="20"
+                            PlaceholderText="Search anime..."
+                            Text="{Binding AnimeSearchInput}"
+                            ItemsSource="{Binding AnimeSearchResults}"
+                            SelectedItem="{Binding SelectedAnime}"
+                            ValueMemberBinding="{Binding Title}"
+                            MinimumPrefixLength="2"
+                            MinimumPopulateDelay="0:0:0.3"/>
+                        <t:IconButton Grid.Column="1"
+                            IsVisible="{Binding IsLinkMode}"
+                            FontSize="20"
+                            IconFontFamily="{DynamicResource Phosphor}"
+                            IconText="&#xe2e2;"
+                            Content="Link"
+                            Command="{Binding LinkAnimeCommand}"/>
+                        <t:IconButton Grid.Column="1"
+                            IsVisible="{Binding IsUnlinkMode}"
+                            FontSize="20"
+                            IconFontFamily="{DynamicResource Phosphor}"
+                            IconText="&#xe2e4;"
+                            Content="Unlink"
+                            Command="{Binding UnlinkAnimeCommand}"
+                            CommandParameter="{Binding SelectedAnime}"/>
+                    </Grid>
+                    <t:CALinksList Grid.Row="1"
+                        ItemsSource="{Binding LinkedAnimes}"
+                        RemoveCommand="{Binding UnlinkAnimeCommand}"/>
+                </Grid>
             </Grid>
         </Grid>
     </Border>

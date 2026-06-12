@@ -3,6 +3,7 @@
             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
             xmlns:t="using:KurisuApp.Themes"
+            xmlns:m="using:KurisuCore.Models"
             xmlns:vm="clr-namespace:KurisuApp.ViewModels"
             xmlns:models="clr-namespace:KurisuCore.Models"
             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -20,38 +21,64 @@
                 SelectedItem="{Binding SelectedAnime}"
                 ValueMemberBinding="{Binding Title}"
                 MinimumPrefixLength="2"
-                MinimumPopulateDelay="0:0:0.3">
-            </AutoCompleteBox>
-            <Grid Grid.Row="1" ColumnDefinitions="*, Auto">
-                <Border Grid.Column="0">
-                    <Grid RowDefinitions="Auto, *, Auto" RowSpacing="10" ColumnSpacing="20">
-                        <TextBox Grid.Row="0" 
-                            FontSize="20" 
-                            PlaceholderText="Edit anime title..."
-                            Text="{Binding TitleInput}"/>
-                        <TextBox Grid.Row="1" 
-                            FontSize="20" 
-                            PlaceholderText="Edit anime description..." 
-                            AcceptsReturn="True" 
-                            TextWrapping="Wrap"
-                            Text="{Binding DescriptionInput}"/>
-                        <t:IconButton Grid.Row="2"
-                            IsVisible="{Binding IsAddMode}"
+                MinimumPopulateDelay="0:0:0.3"/>
+            <Grid Grid.Row="1" ColumnDefinitions="3*, 2*" ColumnSpacing="20">
+                <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto" RowSpacing="10">
+                    <TextBox Grid.Row="0" 
+                        FontSize="20" 
+                        PlaceholderText="Edit anime title..."
+                        Text="{Binding TitleInput}"/>
+                    <TextBox Grid.Row="1" 
+                        FontSize="20" 
+                        PlaceholderText="Edit anime description..." 
+                        AcceptsReturn="True" 
+                        TextWrapping="Wrap"
+                        Text="{Binding DescriptionInput}"/>
+                    <t:IconButton Grid.Row="2"
+                        IsVisible="{Binding IsAddMode}"
+                        FontSize="20"
+                        IconText="&#xe3d6;"
+                        Content="Add Anime"
+                        Command="{Binding AddAnimeCommand}"/>
+                    <t:IconButton Grid.Row="2"
+                        IsVisible="{Binding IsEditMode}"
+                        FontSize="20" 
+                        IconText="&#xe5d4;" 
+                        Content="Apply Changes"
+                        Command="{Binding ApplyChangesCommand}"/>
+                </Grid>
+                <Grid Grid.Column="1" RowDefinitions="Auto, *" RowSpacing="10">
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                        <AutoCompleteBox Grid.Column="0"
+                            x:Name="CharacterSearchBox"
                             FontSize="20"
-                            IconText="&#xe3d6;"
-                            Content="Add Anime"
-                            Command="{Binding AddAnimeCommand}"/>
-                        <t:IconButton Grid.Row="2"
-                            IsVisible="{Binding IsEditMode}"
-                            FontSize="20" 
-                            IconText="&#xe5d4;" 
-                            Content="Apply Changes"
-                            Command="{Binding ApplyChangesCommand}"/>
+                            PlaceholderText="Search character..."
+                            Text="{Binding CharacterSearchInput}"
+                            ItemsSource="{Binding CharacterSearchResults}"
+                            SelectedItem="{Binding SelectedCharacter}"
+                            ValueMemberBinding="{Binding Name}"
+                            MinimumPrefixLength="2"
+                            MinimumPopulateDelay="0:0:0.3"/>
+                        <t:IconButton Grid.Column="1"
+                            IsVisible="{Binding IsLinkMode}"
+                            FontSize="20"
+                            IconFontFamily="{DynamicResource Phosphor}"
+                            IconText="&#xe2e2;"
+                            Content="Link"
+                            Command="{Binding LinkCharacterCommand}"/>
+                        <t:IconButton Grid.Column="1"
+                            IsVisible="{Binding IsUnlinkMode}"
+                            FontSize="20"
+                            IconFontFamily="{DynamicResource Phosphor}"
+                            IconText="&#xe2e4;"
+                            Content="Unlink"
+                            Command="{Binding UnlinkCharacterCommand}"
+                            CommandParameter="{Binding SelectedCharacter}"/>
                     </Grid>
-                </Border>
-                <Border Grid.Column="1">
-                    
-                </Border>
+                    <t:CALinksList Grid.Row="1"
+                        ItemsSource="{Binding LinkedCharacters}"
+                        RemoveCommand="{Binding UnlinkCharacterCommand}"/>
+                </Grid>
             </Grid>
         </Grid>
     </Border>

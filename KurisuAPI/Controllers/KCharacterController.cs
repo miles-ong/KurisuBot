@@ -20,6 +20,16 @@ namespace KurisuAPI.Controllers
             return Ok(character);
         }
 
+        [HttpGet("{id}/animes")]
+        public async Task<IActionResult> GetAnimes(int id)
+        {
+            KCharacter? character = await characterService.GetByIdAsync(id);
+
+            if (character is null) return NotFound(KResult.CannotFindAnime);
+
+            return Ok(character.Animes);
+        }
+
         [HttpGet("search")]
         public async Task<IActionResult> Search([FromQuery] string query, [FromQuery] int limit = 10) 
             => Ok(await characterService.SearchAsync(query, limit));

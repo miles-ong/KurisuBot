@@ -37,7 +37,10 @@
             <ContentPresenter.ContentTemplate>
                 <DataTemplate DataType="x:Object">
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Label Classes="icon" Content="{Binding $parent[t:IconButton].IconText}"></Label>
+                        <Label Classes="icon" 
+                            Content="{Binding $parent[t:IconButton].IconText}"
+                            FontFamily="{Binding $parent[t:IconButton].IconFontFamily}">
+                        </Label>
                         <ContentPresenter Content="{Binding}"/>
                     </StackPanel>
                 </DataTemplate>

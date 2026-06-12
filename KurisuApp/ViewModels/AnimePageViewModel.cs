@@ -13,7 +13,7 @@ namespace KurisuApp.ViewModels
 {
     public partial class AnimePageViewModel : PageViewModel
     {
-        private readonly KAnimeAPIClient _client;
+        private readonly KurisuAPIClient _client;
 
         [ObservableProperty]
         private KAnime? _selectedAnime;
@@ -32,8 +32,21 @@ namespace KurisuApp.ViewModels
         [NotifyCanExecuteChangedFor(nameof(ApplyChangesCommand))]
         private string _descriptionInput = string.Empty;
 
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsLinkMode))]
+        [NotifyPropertyChangedFor(nameof(IsUnlinkMode))]
+        [NotifyCanExecuteChangedFor(nameof(LinkCharacterCommand))]
+        private KCharacter? _selectedCharacter;
+
+        [ObservableProperty]
+        private string _characterSearchInput = string.Empty;
+
         public bool IsAddMode => SelectedAnime is null;
         public bool IsEditMode => SelectedAnime is not null;
+        public bool IsLinkMode => SelectedCharacter is null
+            || (SelectedCharacter is not null && !LinkedCharacters.Contains(SelectedCharacter));
+        public bool IsUnlinkMode => SelectedCharacter is not null
+            && LinkedCharacters.Contains(SelectedCharacter);
 
         public bool CanAdd => SelectedAnime is null
             && !string.IsNullOrWhiteSpace(TitleInput)
@@ -44,11 +57,16 @@ namespace KurisuApp.ViewModels
             && !string.IsNullOrWhiteSpace(DescriptionInput)
             && (TitleInput != SelectedAnime.Title || DescriptionInput != SelectedAnime.Description);
 
+        public bool CanLink => SelectedAnime is not null
+            && SelectedCharacter is not null;
+
         public ObservableCollection<KAnime> SearchResults { get; } = new();
+        public ObservableCollection<KCharacter> CharacterSearchResults { get; } = new();
+        public ObservableCollection<KCharacter> LinkedCharacters { get; } = new();
 
         public AnimePageViewModel() : base(ApplicationPageNames.Anime) { }
 
-        public AnimePageViewModel(KAnimeAPIClient client) : base(ApplicationPageNames.Anime)
+        public AnimePageViewModel(KurisuAPIClient client) : base(ApplicationPageNames.Anime)
         {
             _client = client;
         }
@@ -59,15 +77,19 @@ namespace KurisuApp.ViewModels
             {
                 TitleInput = value.Title;
                 DescriptionInput = value.Description;
+                _ = LoadLinkedCharactersAsync();
             }
             else
             {
                 TitleInput = string.Empty;
                 DescriptionInput = string.Empty;
+                LinkedCharacters.Clear();
             }
 
+            CharacterSearchInput = string.Empty;
             OnPropertyChanged(nameof(IsAddMode));
             OnPropertyChanged(nameof(IsEditMode));
+            OnPropertyChanged(nameof(CanLink));
         }
 
         public async Task<IEnumerable<object>> SearchAnimesAsync(string query, CancellationToken cts)
@@ -76,7 +98,7 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                return await _client.SearchAsync(query);
+                return await _client.Anime.SearchAsync(query);
             }
             catch
             {
@@ -84,12 +106,46 @@ namespace KurisuApp.ViewModels
             }
         }
 
+        public async Task<IEnumerable<object>> SearchCharactersAsync(string query, CancellationToken cts)
+        {
+            if (string.IsNullOrEmpty(query)) return [];
+
+            try
+            {
+                return await _client.Character.SearchAsync(query);
+            }
+            catch
+            {
+                return [];
+            }
+        }
+
+        private async Task LoadLinkedCharactersAsync()
+        {
+            if (SelectedAnime is null) return;
+
+            try
+            {
+                LinkedCharacters.Clear();
+                List<KCharacter> characters = await _client.Anime.GetCharactersAsync(SelectedAnime!.Id);
+
+                foreach (KCharacter c in characters)
+                {
+                    LinkedCharacters.Add(c);
+                }
+
+                OnPropertyChanged(nameof(IsLinkMode));
+                OnPropertyChanged(nameof(IsUnlinkMode));
+            }
+            catch { }
+        }
+
         [RelayCommand(CanExecute = nameof(CanAdd))]
         private async Task AddAnimeAsync()
         {
             try
             {
-                Result<KAnime> result = await _client.AddAsync(TitleInput, DescriptionInput);
+                Result<KAnime> result = await _client.Anime.AddAsync(TitleInput, DescriptionInput);
 
                 if (result.Success)
                 {
@@ -107,8 +163,42 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                await _client.SetTitleAsync(SelectedAnime.Id, TitleInput);
-                await _client.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
+                await _client.Anime.SetTitleAsync(SelectedAnime.Id, TitleInput);
+                await _client.Anime.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
+            }
+            catch { }
+        }
+
+        [RelayCommand(CanExecute = nameof(CanLink))]
+        private async Task LinkCharacterAsync()
+        {
+            if (SelectedAnime is null || SelectedCharacter is null) return;
+
+            try
+            {
+                await _client.CALink.LinkAsync(SelectedCharacter.Id, SelectedAnime.Id);
+
+                if (!LinkedCharacters.Contains(SelectedCharacter)) LinkedCharacters.Add(SelectedCharacter);
+
+                SelectedCharacter = null;
+                CharacterSearchInput = string.Empty;
+                OnPropertyChanged(nameof(IsLinkMode));
+                OnPropertyChanged(nameof(IsUnlinkMode));
+            }
+            catch { }
+        }
+
+        [RelayCommand]
+        private async Task UnlinkCharacterAsync(KCharacter character)
+        {
+            if (SelectedAnime is null) return;
+
+            try
+            {
+                await _client.CALink.UnlinkAsync(character.Id, SelectedAnime.Id);
+                LinkedCharacters.Remove(character);
+                OnPropertyChanged(nameof(IsLinkMode));
+                OnPropertyChanged(nameof(IsUnlinkMode));
             }
             catch { }
         }

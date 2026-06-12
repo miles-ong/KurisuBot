@@ -14,6 +14,7 @@ public partial class CharacterPageView : UserControl
             if (DataContext is CharacterPageViewModel vm)
             {
                 SearchBox.AsyncPopulator = vm.SearchCharactersAsync;
+                AnimeSearchBox.AsyncPopulator = vm.SearchAnimesAsync;
             }
         };
     }

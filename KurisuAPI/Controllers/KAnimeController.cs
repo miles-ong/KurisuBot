@@ -28,7 +28,7 @@ namespace KurisuAPI.Controllers
 
             if (anime is null) return NotFound(KResult.CannotFindAnime);
 
-            return Ok(anime!.Characters);
+            return Ok(anime.Characters);
         }
 
         [HttpGet("search")]
