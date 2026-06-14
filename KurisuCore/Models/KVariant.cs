@@ -10,6 +10,7 @@ namespace KurisuCore.Models
         public KAnime Anime { get; private set; }
         public KRarity Rarity { get; private set; }
         public string Title { get; private set; }
+        public string ImageFileName => $"VARIANT_{Id}";
 
         [JsonConstructor]
         public KVariant(int id, KCharacter character, KAnime anime, KRarity rarity, string title)

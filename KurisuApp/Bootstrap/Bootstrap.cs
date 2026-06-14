@@ -2,6 +2,7 @@
 using KurisuApp.Factories;
 using KurisuApp.ViewModels;
 using KurisuCore.APIClient;
+using KurisuCore.BackblazeClient;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
@@ -12,6 +13,8 @@ namespace KurisuApp.Bootstrap
         public static void RegisterCommonServices(IServiceCollection collection)
         {
             collection.AddSingleton(new KurisuAPIClient(Config.ApiUrl, Config.ApiKey));
+            collection.AddSingleton<BackblazeClient>();
+
             collection.AddSingleton<MainViewModel>();
             collection.AddTransient<AnimePageViewModel>();
             collection.AddTransient<CharacterPageViewModel>();

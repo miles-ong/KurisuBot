@@ -7,9 +7,12 @@ namespace KurisuAPI.Bootstrap
 {
     public static class Bootstrapper
     {
-        public static void RegisterServices(IServiceCollection collection, string connectionString)
+        public static void RegisterServices(
+            IServiceCollection collection,
+            string supabaseConnection
+            )
         {
-            collection.AddSingleton(new DbConnectionFactory(connectionString));
+            collection.AddSingleton(new DbConnectionFactory(supabaseConnection));
 
             collection.AddSingleton<KAnimeRepository>();
             collection.AddSingleton<KCharacterRepository>();
