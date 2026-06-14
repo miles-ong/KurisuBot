@@ -3,8 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace KurisuCore.Models
 {
-    public sealed class KVariant
+    public sealed class KVariant : IKurisuDisplayItem
     {
+        public string DisplayName => Title;
         public int Id { get; }
         public KCharacter Character { get; private set; }
         public KAnime Anime { get; private set; }

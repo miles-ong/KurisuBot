@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:t="using:KurisuApp.Themes"
+             xmlns:m="using:KurisuCore.Models"
+             xmlns:vm="clr-namespace:KurisuApp.ViewModels"
+             xmlns:models="clr-namespace:KurisuCore.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="KurisuApp.Views.VariantPageView"
+             x:DataType="vm:VariantPageViewModel">
+
+    <Design.DataContext><vm:VariantPageViewModel/></Design.DataContext>
+
+    <Border Margin="20">
+        <Grid RowDefinitions="Auto, *" RowSpacing="20">
+            <AutoCompleteBox Grid.Row="0"
+                x:Name="CharacterSearchBox"
+                FontSize="30"/>
+
+        </Grid>
+    </Border>
+</UserControl>

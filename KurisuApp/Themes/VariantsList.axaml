@@ -1,0 +1,54 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:t="using:KurisuApp.Themes"
+    xmlns:m="using:KurisuCore.Models">
+  
+    <Design.PreviewWith>
+        <StackPanel Width="400" Spacing="10">      
+            <StackPanel Background="{DynamicResource SystemRegionBrush}">
+                <t:VariantsList />
+            </StackPanel>
+        </StackPanel>
+    </Design.PreviewWith>
+ 
+    <ControlTheme x:Key="{x:Type t:VariantsList}" TargetType="t:VariantsList">
+        <Setter Property="Template">
+            <ControlTemplate TargetType="t:VariantsList">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{TemplateBinding ItemsSource}"
+                        Background="{DynamicResource PrimaryInset}"
+                        Padding="15, 10"
+                        CornerRadius="5">
+                        <ItemsControl.ItemContainerTheme>
+                            <ControlTheme TargetType="ContentPresenter">
+                                <Setter Property="Margin" Value="0,0,0,5"/>
+                            </ControlTheme>
+                        </ItemsControl.ItemContainerTheme>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:IKurisuDisplayItem">
+                                <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="5">
+                                    <TextBlock Grid.Column="0"
+                                        Text="{Binding DisplayName}"
+                                        FontSize="20"
+                                        VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1"
+                                        FontFamily="{DynamicResource PhosphorFill}"
+                                        FontSize="15"
+                                        Content="&#xe3b4;"
+                                        Command="{Binding $parent[t:VariantsList].EditCommand}"
+                                        CommandParameter="{Binding}"/>
+                                    <Button Grid.Column="2"
+                                        FontFamily="{DynamicResource PhosphorFill}"
+                                        FontSize="15"
+                                        Content="&#xe4a8;"
+                                        Command="{Binding $parent[t:VariantsList].RemoveCommand}"
+                                        CommandParameter="{Binding}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>
