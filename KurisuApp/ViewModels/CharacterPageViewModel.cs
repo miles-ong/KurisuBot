@@ -4,7 +4,6 @@ using KurisuApp.Data;
 using KurisuCore.APIClient;
 using KurisuCore.Models;
 using KurisuCore.Result;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
@@ -20,6 +19,12 @@ namespace KurisuApp.ViewModels
         private KCharacter? _selectedCharacter;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsLinkMode))]
+        [NotifyPropertyChangedFor(nameof(IsUnlinkMode))]
+        [NotifyCanExecuteChangedFor(nameof(LinkAnimeCommand))]
+        private KAnime? _selectedAnime;
+
+        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsAddMode))]
         [NotifyPropertyChangedFor(nameof(IsEditMode))]
         [NotifyCanExecuteChangedFor(nameof(AddCharacterCommand))]
@@ -27,13 +32,11 @@ namespace KurisuApp.ViewModels
         private string _nameInput = string.Empty;
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsLinkMode))]
-        [NotifyPropertyChangedFor(nameof(IsUnlinkMode))]
-        [NotifyCanExecuteChangedFor(nameof(LinkAnimeCommand))]
-        private KAnime? _selectedAnime;
-
-        [ObservableProperty]
         private string _animeSearchInput = string.Empty;
+
+        public ObservableCollection<KCharacter> SearchResults { get; } = new();
+        public ObservableCollection<KAnime> AnimeSearchResults { get; } = new();
+        public ObservableCollection<KAnime> LinkedAnimes { get; } = new();
 
         public bool IsAddMode => SelectedCharacter is null;
         public bool IsEditMode => SelectedCharacter is not null;
@@ -51,10 +54,6 @@ namespace KurisuApp.ViewModels
 
         public bool CanLink => SelectedCharacter is not null
             && SelectedAnime is not null;
-
-        public ObservableCollection<KCharacter> SearchResults { get; } = new();
-        public ObservableCollection<KAnime> AnimeSearchResults { get; } = new();
-        public ObservableCollection<KAnime> LinkedAnimes { get; } = new();
 
         public CharacterPageViewModel() : base(ApplicationPageNames.Character) { }
 

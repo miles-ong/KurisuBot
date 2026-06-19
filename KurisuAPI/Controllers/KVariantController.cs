@@ -28,6 +28,14 @@ namespace KurisuAPI.Controllers
             return result.Success ? Ok(result.Value) : Conflict(result.Error);
         }
 
+        [HttpPatch("{id}/anime")]
+        public async Task<IActionResult> SetAnime(int id, [FromBody] KAnime newAnime)
+        {
+            KResult result = await variantService.SetAnimeAsync(id, newAnime);
+
+            return result == KResult.Completed ? Ok() : BadRequest(result);
+        }
+
         [HttpPatch("{id}/rarity")]
         public async Task<IActionResult> SetRarity(int id, [FromBody] KRarity newRarity)
         {

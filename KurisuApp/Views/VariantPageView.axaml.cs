@@ -1,6 +1,5 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
+using KurisuApp.ViewModels;
 
 namespace KurisuApp.Views;
 
@@ -9,5 +8,13 @@ public partial class VariantPageView : UserControl
     public VariantPageView()
     {
         InitializeComponent();
+
+        AttachedToVisualTree += (_, _) =>
+        {
+            if (DataContext is VariantPageViewModel vm)
+            {
+                CharacterSearchBox.AsyncPopulator = vm.SearchCharactersAsync;
+            }
+        };
     }
 }

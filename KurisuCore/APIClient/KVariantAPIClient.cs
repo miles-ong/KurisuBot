@@ -32,6 +32,15 @@ namespace KurisuCore.APIClient
             return Result<KVariant>.Ok(variant);
         }
 
+        public async Task<KResult> SetAnimeAsync(int id, KAnime newAnime)
+        {
+            var response = await http.PatchAsJsonAsync($"variants/{id}/anime", newAnime);
+
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+
+            return KResult.Completed;
+        }
+
         public async Task<KResult> SetRarityAsync(int id, KRarity newRarity)
         {
             var response = await http.PatchAsJsonAsync($"variants/{id}/rarity", newRarity);

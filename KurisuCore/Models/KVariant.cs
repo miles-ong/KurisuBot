@@ -23,6 +23,16 @@ namespace KurisuCore.Models
             Title = title;
         }
 
+        internal KResult SetAnime(KAnime anime)
+        {
+            if (anime == Anime) return KResult.IdenticalVariantAnime;
+            if (!Character.ContainsAnime(anime)) return KResult.CharacterAnimeLinkDoesNotExist;
+
+            Anime = anime;
+
+            return KResult.Completed;
+        }
+
         internal KResult SetRarity(KRarity rarity)
         {
             if (rarity == Rarity) return KResult.IdenticalVariantRarity;

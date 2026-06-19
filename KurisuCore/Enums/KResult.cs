@@ -28,9 +28,10 @@
         CharacterAnimeLinkAlreadyExists,
         CharacterAnimeLinkDoesNotExist,
 
+        IdenticalVariantAnime,
+        IdenticalVariantRarity,
         InvalidVariantTitle,
         IdenticalVariantTitle,
-        IdenticalVariantRarity,
         CannotFindVariant,
         VariantAlreadyExists
     }

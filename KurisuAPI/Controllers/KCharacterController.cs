@@ -25,9 +25,19 @@ namespace KurisuAPI.Controllers
         {
             KCharacter? character = await characterService.GetByIdAsync(id);
 
-            if (character is null) return NotFound(KResult.CannotFindAnime);
+            if (character is null) return NotFound(KResult.CannotFindCharacter);
 
             return Ok(character.Animes);
+        }
+
+        [HttpGet("{id}/variants")]
+        public async Task<IActionResult> GetVariants(int id)
+        {
+            KCharacter? character = await characterService.GetByIdAsync(id);
+
+            if (character is null) return NotFound(KResult.CannotFindCharacter);
+
+            return Ok(character.Variants);
         }
 
         [HttpGet("search")]

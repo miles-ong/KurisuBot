@@ -8,6 +8,37 @@ namespace KurisuAPI.Repositories
 {
     public sealed class KVariantRepository(DbConnectionFactory factory)
     {
+        public async Task<List<KVariantRow>> GetByCharacterIdAsync(int cid)
+        {
+            const string sql = """
+                SELECT id, anime_id, rarity, title
+                FROM variantinfo
+                WHERE character_id = @cid
+            """;
+
+            await using var connection = await factory.CreateAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("@cid", cid);
+
+            List<KVariantRow> rows = new();
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                rows.Add(new KVariantRow(
+                
+                    reader.GetInt32(0),
+                    cid,
+                    reader.GetInt32(2),
+                    Enum.Parse<KRarity>(reader.GetString(3)),
+                    reader.GetString(4)
+                ));
+            }
+
+            return rows;
+        }
+
         public async Task<KVariantRow?> GetByIdAsync(int id)
         {
             const string sql = "SELECT id, character_id, anime_id, rarity, title FROM variantinfo WHERE id = @id";
@@ -53,7 +84,8 @@ namespace KurisuAPI.Repositories
         {
             const string sql = """
                 UPDATE variantinfo
-                SET rarity  = @rarity::cardrarity,
+                SET anime_id = @aid,
+                    rarity  = @rarity::cardrarity,
                     title   = @title
                 WHERE id = @id
             """;
@@ -62,6 +94,7 @@ namespace KurisuAPI.Repositories
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("@id", variant.Id);
+            command.Parameters.AddWithValue("@aid", variant.Anime.Id);
             command.Parameters.AddWithValue("@rarity", variant.Rarity.ToString());
             command.Parameters.AddWithValue("@title", variant.Title);
 

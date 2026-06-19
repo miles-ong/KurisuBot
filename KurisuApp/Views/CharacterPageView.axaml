@@ -16,6 +16,7 @@
             <AutoCompleteBox Grid.Row="0"
                 x:Name="SearchBox"
                 FontSize="30"
+                PlaceholderText="Search character..."
                 ItemsSource="{Binding SearchResults}"
                 SelectedItem="{Binding SelectedCharacter}"
                 ValueMemberBinding="{Binding Name}"

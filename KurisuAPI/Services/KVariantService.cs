@@ -17,6 +17,30 @@ public sealed class KVariantService(
 {
     private const string _consoleTag = "[KVariantService]";
 
+    public async Task LoadVariantsAsync(KCharacter character)
+    {
+        List<KVariantRow> rows = await repository.GetByCharacterIdAsync(character.Id);
+
+        foreach(KVariantRow r in rows)
+        {
+
+            KAnime? anime = await animeService.GetByIdAsync(r.AnimeId);
+
+            if (anime is null) continue;
+
+            KVariant variant = new(
+                r.Id,
+                character,
+                anime,
+                r.Rarity,
+                r.Title
+            );
+
+            cache.Add(variant);
+            character.AddVariant(variant);
+        }
+    }
+
     public async Task<KVariant?> GetByIdAsync(int id)
     {
         if (cache.TryGet(id, out KVariant? cached)) return cached;
@@ -26,31 +50,22 @@ public sealed class KVariantService(
         if (variantRow is null) return null;
 
         KAnime? anime = await animeService.GetByIdAsync(variantRow.AnimeId);
-
-        if (anime is null)
-        {
-            Console.WriteLine($"{_consoleTag} Variant deprecated (ID: {id}), failed to find anime (ID: {variantRow.AnimeId}) in cache");
-            return null;
-        }
-
         KCharacter? character = await characterService.GetByIdAsync(variantRow.CharacterId);
+        KVariant? variant = null;
 
-        if (character is null)
+        if (anime is not null && character is not null)
         {
-            Console.WriteLine($"{_consoleTag} Variant deprecated (ID: {id}), failed to find character (ID: {variantRow.CharacterId}) in cache");
-            return null;
+            variant = new KVariant(
+                variantRow.Id,
+                character,
+                anime,
+                variantRow.Rarity,
+                variantRow.Title
+            );
+
+            cache.Add(variant);
+            character.AddVariant(variant);
         }
-
-        KVariant variant = new KVariant(
-            variantRow.Id,
-            character,
-            anime,
-            variantRow.Rarity,
-            variantRow.Title
-        );
-
-        character.AddVariant(variant);
-        cache.Add(variant);
 
         return variant;
     }
@@ -89,6 +104,30 @@ public sealed class KVariantService(
         }
     }
 
+    public async Task<KResult> SetAnimeAsync(int id, KAnime newAnime)
+    {
+        if (!cache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
+
+        KAnime oldAnime = variant!.Anime;
+        KResult modelResult = variant.SetAnime(newAnime);
+
+        if (modelResult != KResult.Completed) return modelResult;
+
+        try
+        {
+            await repository.UpdateAsync(variant);
+
+            return KResult.Completed;
+        }
+        catch (Exception ex)
+        {
+            variant.SetAnime(oldAnime);
+            Console.WriteLine($"{_consoleTag} Failed to update variant anime for {variant}: {ex.Message}");
+
+            return KResult.DatabaseFailure;
+        }
+    }
+
     public async Task<KResult> SetRarityAsync(int id, KRarity newRarity)
     {
         if (!cache.TryGet(id, out KVariant? variant)) return KResult.CannotFindVariant;
@@ -103,12 +142,6 @@ public sealed class KVariantService(
             await repository.UpdateAsync(variant);
 
             return KResult.Completed;
-        }
-        catch (KeyNotFoundException ex)
-        {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
-            return KResult.CannotFindVariant;
         }
         catch (Exception ex)
         {
@@ -134,12 +167,6 @@ public sealed class KVariantService(
 
             return KResult.Completed;
         }
-        catch (KeyNotFoundException ex)
-        {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
-            return KResult.CannotFindVariant;
-        }
         catch (Exception ex)
         {
             variant.SetTitle(oldTitle);
@@ -160,12 +187,6 @@ public sealed class KVariantService(
             variant!.Character.RemoveVariant(variant);
 
             return KResult.Completed;
-        }
-        catch (KeyNotFoundException ex)
-        {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
-            return KResult.CannotFindVariant;
         }
         catch (Exception ex)
         {

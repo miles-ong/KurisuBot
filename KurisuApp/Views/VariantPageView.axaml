@@ -16,8 +16,52 @@
         <Grid RowDefinitions="Auto, *" RowSpacing="20">
             <AutoCompleteBox Grid.Row="0"
                 x:Name="CharacterSearchBox"
-                FontSize="30"/>
-
+                FontSize="30"
+                PlaceholderText="Search character..."
+                ItemsSource="{Binding SearchResults}"
+                SelectedItem="{Binding SelectedCharacter}"
+                ValueMemberBinding="{Binding Name}"
+                MinimumPrefixLength="2"
+                MinimumPopulateDelay="0:0:0.3"/>
+            <Grid Grid.Row="1" ColumnDefinitions="2*, 3*, Auto" ColumnSpacing="20">
+                <t:VariantsList Grid.Column="0"
+                    ItemsSource="{Binding Variants}"
+                    EditCommand="{Binding EditVariantFromListCommand}"
+                    RemoveCommand="{Binding DeleteVariantFromListCommand}"/>
+                <StackPanel Grid.Column="1" Spacing="10">
+                    <TextBox
+                        FontSize="20"
+                        PlaceholderText="Edit variant title..."
+                        Text="{Binding TitleInput}"/>
+                    <ComboBox
+                        ItemsSource="{Binding Rarities}"
+                        SelectedItem="{Binding SelectedRarity}"/>
+                    <ComboBox
+                        PlaceholderText="Select origin anime..."
+                        ItemsSource="{Binding Animes}"
+                        SelectedItem="{Binding SelectedAnime}"
+                        SelectedValueBinding="{Binding Title}"/>
+                    <Grid ColumnDefinitions="Auto, Auto" ColumnSpacing="5">
+                        <t:IconButton Grid.Column="0"
+                            IsVisible="{Binding IsAddMode}"
+                            FontSize="20"
+                            IconText="&#xe3d6;"
+                            Content="Add Variant"
+                            Command="{Binding AddVariantCommand}"/>
+                        <t:IconButton Grid.Column="0"
+                            IsVisible="{Binding IsEditMode}"
+                            FontSize="20"
+                            IconText="&#xe5d4;"
+                            Content="Apply Changes"
+                            Command="{Binding ApplyChangesCommand}"/>
+                        <t:IconButton Grid.Column="1"
+                            FontSize="20"
+                            IconText="&#xe4a8;"
+                            Content="Delete Variant"
+                            Command="{Binding DeleteVariantCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </UserControl>

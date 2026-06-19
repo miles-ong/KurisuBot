@@ -21,11 +21,7 @@ public sealed class KAnimeService(
 
         KAnime? anime = await repository.GetByIdAsync(id);
 
-        if (anime is not null)
-        {
-            cache.Add(anime);
-            await linkService.LoadLinksAsync(anime);
-        }
+        if (anime is not null) await Register(anime);
 
         return anime;
     }
@@ -40,11 +36,7 @@ public sealed class KAnimeService(
 
         foreach(KAnime a in animes)
         {
-            if (!cache.TryGet(a.Id, out _))
-            {
-                cache.Add(a);
-                await linkService.LoadLinksAsync(a);
-            }
+            if (!cache.TryGet(a.Id, out _)) await Register(a);
         }
 
         return animes;
@@ -159,5 +151,11 @@ public sealed class KAnimeService(
 
             return KResult.DatabaseFailure;
         }
+    }
+
+    private async Task Register(KAnime anime)
+    {
+        cache.Add(anime);
+        await linkService.LoadLinksAsync(anime);
     }
 }

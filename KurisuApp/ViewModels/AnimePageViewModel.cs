@@ -41,28 +41,25 @@ namespace KurisuApp.ViewModels
         [ObservableProperty]
         private string _characterSearchInput = string.Empty;
 
+        public ObservableCollection<KAnime> SearchResults { get; } = new();
+        public ObservableCollection<KCharacter> CharacterSearchResults { get; } = new();
+        public ObservableCollection<KCharacter> LinkedCharacters { get; } = new();
+
         public bool IsAddMode => SelectedAnime is null;
         public bool IsEditMode => SelectedAnime is not null;
         public bool IsLinkMode => SelectedCharacter is null
             || (SelectedCharacter is not null && !LinkedCharacters.Contains(SelectedCharacter));
         public bool IsUnlinkMode => SelectedCharacter is not null
             && LinkedCharacters.Contains(SelectedCharacter);
-
         public bool CanAdd => SelectedAnime is null
             && !string.IsNullOrWhiteSpace(TitleInput)
             && !string.IsNullOrWhiteSpace(DescriptionInput);
-
         public bool CanApply => SelectedAnime is not null
             && !string.IsNullOrWhiteSpace(TitleInput) 
             && !string.IsNullOrWhiteSpace(DescriptionInput)
             && (TitleInput != SelectedAnime.Title || DescriptionInput != SelectedAnime.Description);
-
         public bool CanLink => SelectedAnime is not null
             && SelectedCharacter is not null;
-
-        public ObservableCollection<KAnime> SearchResults { get; } = new();
-        public ObservableCollection<KCharacter> CharacterSearchResults { get; } = new();
-        public ObservableCollection<KCharacter> LinkedCharacters { get; } = new();
 
         public AnimePageViewModel() : base(ApplicationPageNames.Anime) { }
 
@@ -127,7 +124,7 @@ namespace KurisuApp.ViewModels
             try
             {
                 LinkedCharacters.Clear();
-                List<KCharacter> characters = await _client.Anime.GetCharactersAsync(SelectedAnime!.Id);
+                List<KCharacter> characters = await _client.Anime.GetCharactersAsync(SelectedCharacter!.Id);
 
                 foreach (KCharacter c in characters)
                 {
@@ -163,8 +160,8 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                await _client.Anime.SetTitleAsync(SelectedAnime.Id, TitleInput);
-                await _client.Anime.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
+                if (!SelectedAnime.Title.Equals(TitleInput)) await _client.Anime.SetTitleAsync(SelectedAnime.Id, TitleInput);
+                if (!SelectedAnime.Description.Equals(DescriptionInput)) await _client.Anime.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
             }
             catch { }
         }

@@ -10,7 +10,8 @@ namespace KurisuAPI.Services;
 public sealed class KCharacterService(
     KCharacterRepository repository, 
     KCharacterCache cache,
-    KCharacterAnimeLinkService linkService
+    KCharacterAnimeLinkService linkService,
+    KVariantService variantService
     )
 {
     private const string _consoleTag = "[KCharacterService]";
@@ -21,11 +22,7 @@ public sealed class KCharacterService(
 
         KCharacter? character = await repository.GetByIdAsync(id);
 
-        if (character is not null)
-        {
-            cache.Add(character);
-            await linkService.LoadLinksAsync(character);
-        }
+        if (character is not null) await Register(character);
 
         return character;
     }
@@ -40,11 +37,7 @@ public sealed class KCharacterService(
 
         foreach (KCharacter c in characters)
         {
-            if (!cache.TryGet(c.Id, out _))
-            {
-                cache.Add(c);
-                await linkService.LoadLinksAsync(c);
-            }
+            if (!cache.TryGet(c.Id, out _)) await Register(c);
         }
 
         return characters;
@@ -129,5 +122,12 @@ public sealed class KCharacterService(
 
             return KResult.DatabaseFailure;
         }
+    }
+
+    private async Task Register(KCharacter character)
+    {
+        cache.Add(character);
+        await linkService.LoadLinksAsync(character);
+        await variantService.LoadVariantsAsync(character);
     }
 }
