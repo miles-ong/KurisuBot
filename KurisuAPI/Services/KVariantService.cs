@@ -11,61 +11,27 @@ namespace KurisuAPI.Services;
 public sealed class KVariantService(
     KVariantRepository repository, 
     KVariantCache cache,
-    KAnimeService animeService, 
-    KCharacterService characterService
+    KEntityLoader loader
     )
 {
     private const string _consoleTag = "[KVariantService]";
-
-    public async Task LoadVariantsAsync(KCharacter character)
-    {
-        List<KVariantRow> rows = await repository.GetByCharacterIdAsync(character.Id);
-
-        foreach(KVariantRow r in rows)
-        {
-
-            KAnime? anime = await animeService.GetByIdAsync(r.AnimeId);
-
-            if (anime is null) continue;
-
-            KVariant variant = new(
-                r.Id,
-                character,
-                anime,
-                r.Rarity,
-                r.Title
-            );
-
-            cache.Add(variant);
-            character.AddVariant(variant);
-        }
-    }
 
     public async Task<KVariant?> GetByIdAsync(int id)
     {
         if (cache.TryGet(id, out KVariant? cached)) return cached;
 
-        KVariantRow? variantRow = await repository.GetByIdAsync(id);
+        KVariantRow? row = await repository.GetByIdAsync(id);
 
-        if (variantRow is null) return null;
+        if (row is null) return null;
 
-        KAnime? anime = await animeService.GetByIdAsync(variantRow.AnimeId);
-        KCharacter? character = await characterService.GetByIdAsync(variantRow.CharacterId);
-        KVariant? variant = null;
+        KCharacter? character = await loader.LoadCharacterAsync(row.CharacterId);
+        KAnime? anime = await loader.LoadAnimeAsync(row.AnimeId);
 
-        if (anime is not null && character is not null)
-        {
-            variant = new KVariant(
-                variantRow.Id,
-                character,
-                anime,
-                variantRow.Rarity,
-                variantRow.Title
-            );
+        if (character is null || anime is null) return null;
 
-            cache.Add(variant);
-            character.AddVariant(variant);
-        }
+        KVariant variant = new(row.Id, character, anime, row.Rarity, row.Title);
+        cache.Add(variant);
+        character.AddVariant(variant);
 
         return variant;
     }
@@ -74,12 +40,12 @@ public sealed class KVariantService(
     {
         if (string.IsNullOrWhiteSpace(title)) return Result<KVariant>.Fail(KResult.InvalidVariantTitle);
 
-        KCharacter? character = await characterService.GetByIdAsync(cid);
-        KAnime? anime = await animeService.GetByIdAsync(aid);
+        KCharacter? character = await loader.LoadCharacterAsync(cid);
+        KAnime? anime = await loader.LoadAnimeAsync(aid);
 
         if (character is null) return Result<KVariant>.Fail(KResult.CannotFindCharacter);
         if (anime is null) return Result<KVariant>.Fail(KResult.CannotFindAnime);
-        if (character.ContainsAnime(anime!)) return Result<KVariant>.Fail(KResult.CannotFindCharacterAnimeLink);
+        if (!character.ContainsAnime(anime!)) return Result<KVariant>.Fail(KResult.CannotFindCharacterAnimeLink);
 
         try
         {

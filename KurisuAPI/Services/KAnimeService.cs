@@ -10,21 +10,13 @@ namespace KurisuAPI.Services;
 public sealed class KAnimeService(
     KAnimeRepository repository, 
     KAnimeCache cache,
-    KCharacterAnimeLinkService linkService
+    KEntityLoader loader
     )
 {
     private const string _consoleTag = "[KAnimeService]";
 
     public async Task<KAnime?> GetByIdAsync(int id)
-    {
-        if (cache.TryGet(id, out KAnime? cached)) return cached;
-
-        KAnime? anime = await repository.GetByIdAsync(id);
-
-        if (anime is not null) await Register(anime);
-
-        return anime;
-    }
+        => await loader.LoadAnimeAsync(id);
 
     public async Task<IEnumerable<KAnime>> SearchAsync(string query, int limit = 10)
     {
@@ -33,13 +25,16 @@ public sealed class KAnimeService(
         if (cached.Count >= limit) return cached;
 
         List<KAnime> animes = await repository.SearchAsync(query, limit);
+        List<KAnime> results = new();
 
         foreach(KAnime a in animes)
         {
-            if (!cache.TryGet(a.Id, out _)) await Register(a);
+            KAnime? loaded = await loader.LoadAnimeAsync(a.Id);
+
+            if (loaded is not null) results.Add(loaded);
         }
 
-        return animes;
+        return results;
     }
 
     public async Task<Result<KAnime>> AddAsync(string title, string? description = null)
@@ -151,11 +146,5 @@ public sealed class KAnimeService(
 
             return KResult.DatabaseFailure;
         }
-    }
-
-    private async Task Register(KAnime anime)
-    {
-        cache.Add(anime);
-        await linkService.LoadLinksAsync(anime);
     }
 }

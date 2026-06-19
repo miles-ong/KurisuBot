@@ -27,6 +27,8 @@ namespace KurisuAPI.Bootstrap
             collection.AddSingleton<KCardCache>();
             collection.AddSingleton<KUserCache>();
 
+            collection.AddSingleton<KEntityLoader>();
+
             collection.AddSingleton<KAnimeService>();
             collection.AddSingleton<KCharacterService>();
             collection.AddSingleton<KVariantService>();

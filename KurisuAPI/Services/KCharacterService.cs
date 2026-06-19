@@ -10,22 +10,13 @@ namespace KurisuAPI.Services;
 public sealed class KCharacterService(
     KCharacterRepository repository, 
     KCharacterCache cache,
-    KCharacterAnimeLinkService linkService,
-    KVariantService variantService
+    KEntityLoader loader
     )
 {
     private const string _consoleTag = "[KCharacterService]";
 
     public async Task<KCharacter?> GetByIdAsync(int id)
-    {
-        if (cache.TryGet(id, out KCharacter? cached)) return cached;
-
-        KCharacter? character = await repository.GetByIdAsync(id);
-
-        if (character is not null) await Register(character);
-
-        return character;
-    }
+        => await loader.LoadCharacterAsync(id);
 
     public async Task<IEnumerable<KCharacter>> SearchAsync(string query, int limit = 10)
     {
@@ -34,13 +25,16 @@ public sealed class KCharacterService(
         if (cached.Count >= limit) return cached;
 
         List<KCharacter> characters = await repository.SearchAsync(query, limit);
+        List<KCharacter> results = new();
 
         foreach (KCharacter c in characters)
         {
-            if (!cache.TryGet(c.Id, out _)) await Register(c);
+            KCharacter? loaded = await loader.LoadCharacterAsync(c.Id);
+
+            if (loaded is not null) results.Add(loaded);
         }
 
-        return characters;
+        return results;
     }
 
     public async Task<Result<KCharacter>> AddAsync(string name)
@@ -122,12 +116,5 @@ public sealed class KCharacterService(
 
             return KResult.DatabaseFailure;
         }
-    }
-
-    private async Task Register(KCharacter character)
-    {
-        cache.Add(character);
-        await linkService.LoadLinksAsync(character);
-        await variantService.LoadVariantsAsync(character);
     }
 }
