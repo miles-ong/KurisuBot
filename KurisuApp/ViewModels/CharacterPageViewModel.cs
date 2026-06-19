@@ -116,7 +116,7 @@ namespace KurisuApp.ViewModels
             try
             {
                 LinkedAnimes.Clear();
-                List<KAnime> animes = await _client.Character.GetAnimesAsync(SelectedCharacter!.Id);
+                List<KAnime> animes = await _client.Character.GetAnimesAsync(SelectedCharacter.Id);
 
                 foreach (KAnime a in animes)
                 {

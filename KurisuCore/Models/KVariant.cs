@@ -25,7 +25,7 @@ namespace KurisuCore.Models
 
         internal KResult SetAnime(KAnime anime)
         {
-            if (anime == Anime) return KResult.IdenticalVariantAnime;
+            if (anime.Equals(Anime)) return KResult.IdenticalVariantAnime;
             if (!Character.ContainsAnime(anime)) return KResult.CharacterAnimeLinkDoesNotExist;
 
             Anime = anime;

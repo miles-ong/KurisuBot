@@ -11,16 +11,22 @@ namespace KurisuCore.BackblazeClient
 
         public BackblazeClient()
         {
-            var credentials = new BasicAWSCredentials(BackblazeConfig.KeyId, BackblazeConfig.AppKey);
+            string keyId = Environment.GetEnvironmentVariable("BACKBLAZE_KEY_ID")
+                ?? throw new InvalidOperationException("Missing BACKBLAZE_KEY_ID");
+
+            string appKey = Environment.GetEnvironmentVariable("BACKBLAZE_APP_KEY")
+                ?? throw new InvalidOperationException("Missing BACKBLAZE_APP_KEY");
+
+            var credentials = new BasicAWSCredentials(keyId, appKey);
 
             var config = new AmazonS3Config
             {
-                ServiceURL = $"https://{BackblazeConfig.Endpoint}",
+                ServiceURL = "https://s3.us-west-004.backblazeb2.com",
                 ForcePathStyle = true
             };
 
             _client = new AmazonS3Client(credentials, config);
-            _bucketName = BackblazeConfig.BucketName;
+            _bucketName = "kurisu-images";
         }
 
         public string GetUrl(string fileName)

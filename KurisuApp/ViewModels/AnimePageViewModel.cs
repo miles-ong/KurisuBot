@@ -124,7 +124,7 @@ namespace KurisuApp.ViewModels
             try
             {
                 LinkedCharacters.Clear();
-                List<KCharacter> characters = await _client.Anime.GetCharactersAsync(SelectedCharacter!.Id);
+                List<KCharacter> characters = await _client.Anime.GetCharactersAsync(SelectedAnime.Id);
 
                 foreach (KCharacter c in characters)
                 {
