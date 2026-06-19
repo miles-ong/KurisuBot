@@ -30,9 +30,9 @@ namespace KurisuAPI.Repositories
                 
                     reader.GetInt32(0),
                     cid,
-                    reader.GetInt32(2),
-                    Enum.Parse<KRarity>(reader.GetString(3)),
-                    reader.GetString(4)
+                    reader.GetInt32(1),
+                    Enum.Parse<KRarity>(reader.GetString(2)),
+                    reader.GetString(3)
                 ));
             }
 

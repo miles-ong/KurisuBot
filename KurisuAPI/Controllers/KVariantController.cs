@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace KurisuAPI.Controllers
 {
     [ApiController]
-    [Route("variant")]
+    [Route("variants")]
     public sealed class KVariantController(KVariantService variantService) : ControllerBase
     {
         [HttpGet("{id}")]

@@ -20,7 +20,7 @@ namespace KurisuAPI.Controllers
             return Ok(character);
         }
 
-        [HttpGet("{id}/animes")]
+        [HttpGet("{id}/anime")]
         public async Task<IActionResult> GetAnimes(int id)
         {
             KCharacter? character = await characterService.GetByIdAsync(id);

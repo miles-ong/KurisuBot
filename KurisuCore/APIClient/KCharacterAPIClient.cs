@@ -18,7 +18,7 @@ namespace KurisuCore.APIClient
 
         public async Task<List<KAnime>> GetAnimesAsync(int id)
         {
-            var response = await http.GetAsync($"characters/{id}/animes");
+            var response = await http.GetAsync($"characters/{id}/anime");
 
             if (!response.IsSuccessStatusCode) return [];
 
