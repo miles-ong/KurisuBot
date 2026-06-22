@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 
-namespace KurisuApp.Themes;
+namespace KurisuApp.Controls;
 
 public class IconButton : Button
 {

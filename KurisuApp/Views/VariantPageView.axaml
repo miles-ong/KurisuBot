@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:t="using:KurisuApp.Themes"
+             xmlns:c="using:KurisuApp.Controls"
              xmlns:m="using:KurisuCore.Models"
              xmlns:vm="clr-namespace:KurisuApp.ViewModels"
              xmlns:models="clr-namespace:KurisuCore.Models"
@@ -23,8 +23,8 @@
                 ValueMemberBinding="{Binding Name}"
                 MinimumPrefixLength="2"
                 MinimumPopulateDelay="0:0:0.3"/>
-            <Grid Grid.Row="1" ColumnDefinitions="2*, 3*, Auto" ColumnSpacing="20">
-                <t:VariantsList Grid.Column="0"
+            <Grid Grid.Row="1" ColumnDefinitions="3*,4*,Auto" ColumnSpacing="20">
+                <c:VariantsList Grid.Column="0"
                     ItemsSource="{Binding Variants}"
                     EditCommand="{Binding EditVariantFromListCommand}"
                     RemoveCommand="{Binding DeleteVariantFromListCommand}"/>
@@ -34,32 +34,72 @@
                         PlaceholderText="Edit variant title..."
                         Text="{Binding TitleInput}"/>
                     <ComboBox
+                        FontSize="20"
                         ItemsSource="{Binding Rarities}"
                         SelectedItem="{Binding SelectedRarity}"/>
                     <ComboBox
+                        FontSize="20"
                         PlaceholderText="Select origin anime..."
                         ItemsSource="{Binding Animes}"
-                        SelectedItem="{Binding SelectedAnime}"
-                        SelectedValueBinding="{Binding Title}"/>
-                    <Grid ColumnDefinitions="Auto, Auto" ColumnSpacing="5">
-                        <t:IconButton Grid.Column="0"
+                        SelectedItem="{Binding SelectedAnime}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:KAnime">
+                                <TextBlock Text="{Binding DisplayName}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Grid ColumnDefinitions="Auto, Auto, Auto" ColumnSpacing="5">
+                        <c:IconButton Grid.Column="0"
                             IsVisible="{Binding IsAddMode}"
                             FontSize="20"
                             IconText="&#xe3d6;"
                             Content="Add Variant"
                             Command="{Binding AddVariantCommand}"/>
-                        <t:IconButton Grid.Column="0"
+                        <c:IconButton Grid.Column="0"
                             IsVisible="{Binding IsEditMode}"
                             FontSize="20"
                             IconText="&#xe5d4;"
                             Content="Apply Changes"
                             Command="{Binding ApplyChangesCommand}"/>
-                        <t:IconButton Grid.Column="1"
+                        <c:IconButton Grid.Column="1"
                             FontSize="20"
                             IconText="&#xe4a8;"
-                            Content="Delete Variant"
+                            Content="Delete"
                             Command="{Binding DeleteVariantCommand}"/>
+                        <c:IconButton Grid.Column="2"
+                            IsVisible="{Binding IsEditMode}"
+                            FontSize="20"
+                            IconText="&#xecf6;"
+                            Content="Deselect"
+                            Command="{Binding DeselectVariantCommand}"/>
                     </Grid>
+                </StackPanel>
+                <StackPanel Grid.Column="2"
+                    IsVisible="{Binding IsEditMode}"
+                    Spacing="10">
+                    <Border
+                        Background="{DynamicResource PrimaryInset}"
+                        BorderBrush="{DynamicResource PrimaryForeground}"
+                        BorderThickness="2"
+                        Width="400" Height="600">
+                        <Panel>
+                            <TextBlock
+                                IsVisible="{Binding CannotDisplayImage}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                FontSize="20"
+                                Text="{Binding ImageStatusText}"/>
+                            <Image
+                                IsVisible="{Binding CanDisplayImage}"
+                                Source="{Binding VariantImage}"
+                                Stretch="UniformToFill"/>
+                        </Panel>
+                    </Border>
+                    <c:IconButton
+                        HorizontalAlignment="Center"
+                        FontSize="20"
+                        IconText="&#xe4c0;"
+                        Content="Upload Image"
+                        Click="OnUploadImageClick"/>
                 </StackPanel>
             </Grid>
         </Grid>

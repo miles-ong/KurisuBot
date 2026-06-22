@@ -5,6 +5,7 @@
         Unknown,
         Anime,
         Character,
-        Variant
+        Variant,
+        Pack
     }
 }

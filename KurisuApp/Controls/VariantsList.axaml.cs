@@ -3,20 +3,29 @@ using Avalonia.Controls.Primitives;
 using System.Collections;
 using System.Windows.Input;
 
-namespace KurisuApp.Themes;
+namespace KurisuApp.Controls;
 
-public class CALinksList : TemplatedControl
+public class VariantsList : TemplatedControl
 {
     public static readonly StyledProperty<IEnumerable?> ItemsSourceProperty
-        = AvaloniaProperty.Register<CALinksList, IEnumerable?>(nameof(ItemsSource));
+        = AvaloniaProperty.Register<VariantsList, IEnumerable?>(nameof(ItemsSource));
+
+    public static readonly StyledProperty<ICommand?> EditCommandProperty
+        = AvaloniaProperty.Register<VariantsList, ICommand?>(nameof(EditCommand));
 
     public static readonly StyledProperty<ICommand?> RemoveCommandProperty
-        = AvaloniaProperty.Register<CALinksList, ICommand?>(nameof(RemoveCommand));
+        = AvaloniaProperty.Register<VariantsList, ICommand?>(nameof(RemoveCommand));
 
     public IEnumerable? ItemsSource
     {
         get => GetValue(ItemsSourceProperty);
         set => SetValue(ItemsSourceProperty, value);
+    }
+
+    public ICommand? EditCommand
+    {
+        get => GetValue(EditCommandProperty);
+        set => SetValue(EditCommandProperty, value);
     }
 
     public ICommand? RemoveCommand

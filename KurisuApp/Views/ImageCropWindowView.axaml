@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:c="using:KurisuApp.Controls"
+        xmlns:vm="clr-namespace:KurisuApp.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
+        x:Class="KurisuApp.Views.ImageCropWindowView"
+        x:DataType="vm:ImageCropWindowViewModel"
+        Title="Crop Image"
+        Width="1920"
+        Height="1080"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0, 10, 0, 0">
+            <c:IconButton
+                FontSize="20"
+                IconText="&#xe4f8;"
+                Content="Cancel"
+                Command="{Binding CancelCommand}"/>
+            <c:IconButton
+                FontFamily="{DynamicResource Phosphor}"
+                FontSize="20"
+                IconText="&#xe1d4;"
+                Content="Crop"
+                Command="{Binding CropCommand}"/>
+        </StackPanel>
+        <Canvas Name="CropCanvas" Background="Black" Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}">
+            <Image
+                Source="{Binding SourceBitmap}"
+                Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}"
+                Canvas.Left="0" Canvas.Top="0"/>
+            <Border Name="CropFrame"
+                Width="{Binding FrameWidth}" Height="{Binding FrameHeight}"
+                Canvas.Left="{Binding FrameX}" Canvas.Top="{Binding FrameY}"
+                BorderBrush="White" BorderThickness="2"
+                Background="#33FFFFFF"
+                Cursor="SizeAll"
+                PointerPressed="OnFramePointerPressed"
+                PointerMoved="OnFramePointerMoved"
+                PointerReleased="OnFramePointerReleased"/>
+            <Rectangle Name="ResizeHandle"
+                Width="16" Height="16"
+                Canvas.Left="{Binding HandleX}" Canvas.Top="{Binding HandleY}"
+                Fill="White"
+                Cursor="BottomRightCorner"
+                PointerPressed="OnHandlePointerPressed"
+                PointerMoved="OnHandlePointerMoved"
+                PointerReleased="OnHandlePointerReleased"/>
+        </Canvas>
+    </DockPanel>
+</Window>

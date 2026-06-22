@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using KurisuApp.Data;
 using KurisuApp.Factories;
+using KurisuApp.Notification;
 using KurisuCore.APIClient;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,11 +19,15 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(AnimePageIsActive))]
     [NotifyPropertyChangedFor(nameof(CharacterPageIsActive))]
     [NotifyPropertyChangedFor(nameof(VariantPageIsActive))]
+    [NotifyPropertyChangedFor(nameof(PackPageIsActive))]
     private PageViewModel _currentPage;
+
+    public NotificationService NotificationService { get; }
 
     public bool AnimePageIsActive => CurrentPage.PageName == ApplicationPageNames.Anime;
     public bool CharacterPageIsActive => CurrentPage.PageName == ApplicationPageNames.Character;
     public bool VariantPageIsActive => CurrentPage.PageName == ApplicationPageNames.Variant;
+    public bool PackPageIsActive => CurrentPage.PageName == ApplicationPageNames.Pack;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ApiStatus))]
@@ -35,10 +40,11 @@ public partial class MainViewModel : ViewModelBase
         CurrentPage = new AnimePageViewModel();
     }
 
-    public MainViewModel(PageFactory pageFactory, KurisuAPIClient apiClient)
+    public MainViewModel(PageFactory pageFactory, KurisuAPIClient apiClient, NotificationService notification)
     {
         _pageFactory = pageFactory;
         _apiClient = apiClient;
+        NotificationService = notification;
         GoToAnime();
         _ = StartHealthPollAsync();
     }
@@ -77,4 +83,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void GoToVariant()
         => CurrentPage = _pageFactory.GetPageViewModel(ApplicationPageNames.Variant);
+
+    [RelayCommand]
+    private void GoToPack()
+        => CurrentPage = _pageFactory.GetPageViewModel(ApplicationPageNames.Pack);
 }

@@ -2,7 +2,7 @@
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-            xmlns:t="using:KurisuApp.Themes"
+            xmlns:c="using:KurisuApp.Controls"
             xmlns:m="using:KurisuCore.Models"
             xmlns:vm="clr-namespace:KurisuApp.ViewModels"
             xmlns:models="clr-namespace:KurisuCore.Models"
@@ -34,13 +34,13 @@
                         AcceptsReturn="True" 
                         TextWrapping="Wrap"
                         Text="{Binding DescriptionInput}"/>
-                    <t:IconButton Grid.Row="2"
+                    <c:IconButton Grid.Row="2"
                         IsVisible="{Binding IsAddMode}"
                         FontSize="20"
                         IconText="&#xe3d6;"
                         Content="Add Anime"
                         Command="{Binding AddAnimeCommand}"/>
-                    <t:IconButton Grid.Row="2"
+                    <c:IconButton Grid.Row="2"
                         IsVisible="{Binding IsEditMode}"
                         FontSize="20" 
                         IconText="&#xe5d4;" 
@@ -59,14 +59,14 @@
                             ValueMemberBinding="{Binding Name}"
                             MinimumPrefixLength="2"
                             MinimumPopulateDelay="0:0:0.3"/>
-                        <t:IconButton Grid.Column="1"
+                        <c:IconButton Grid.Column="1"
                             IsVisible="{Binding IsLinkMode}"
                             FontSize="20"
                             IconFontFamily="{DynamicResource Phosphor}"
                             IconText="&#xe2e2;"
                             Content="Link"
                             Command="{Binding LinkCharacterCommand}"/>
-                        <t:IconButton Grid.Column="1"
+                        <c:IconButton Grid.Column="1"
                             IsVisible="{Binding IsUnlinkMode}"
                             FontSize="20"
                             IconFontFamily="{DynamicResource Phosphor}"
@@ -75,7 +75,7 @@
                             Command="{Binding UnlinkCharacterCommand}"
                             CommandParameter="{Binding SelectedCharacter}"/>
                     </Grid>
-                    <t:CALinksList Grid.Row="1"
+                    <c:CALinksList Grid.Row="1"
                         ItemsSource="{Binding LinkedCharacters}"
                         RemoveCommand="{Binding UnlinkCharacterCommand}"/>
                 </Grid>

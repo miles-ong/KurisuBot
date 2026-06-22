@@ -1,0 +1,44 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:KurisuApp.Controls"
+        xmlns:n="using:KurisuApp.Notification">
+ 
+    <ControlTheme x:Key="{x:Type c:NotificationBox}" TargetType="c:NotificationBox">
+        <Setter Property="Template">
+            <ControlTemplate TargetType="c:NotificationBox">
+                <ItemsControl ItemsSource="{TemplateBinding ItemsSource}">
+
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel 
+                                Orientation="Vertical" 
+                                Spacing="5"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="n:Notification">
+                            <Border
+                                Classes.Success="{Binding IsSuccess}"
+                                Classes.Fail="{Binding IsFail}"
+                                Classes.Warning="{Binding IsWarning}"
+                                Classes.Info="{Binding IsInfo}"
+                                Opacity="{Binding Opacity}"
+                                Width="900"
+                                HorizontalAlignment="Center"
+                                Padding="10"
+                                CornerRadius="5">
+                            
+                                <TextBlock
+                                    Text="{Binding Message}"
+                                    FontSize="16"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Foreground="{DynamicResource PrimaryElementForeground}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

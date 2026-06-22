@@ -1,0 +1,29 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="Border">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition
+                    Property="Opacity"
+                    Duration="0:0:0.3"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.Success">
+        <Setter Property="Background" Value="{DynamicResource NotificationSuccessBackground}"/>
+    </Style>
+
+    <Style Selector="Border.Fail">
+        <Setter Property="Background" Value="{DynamicResource NotificationFailBackground}"/>
+    </Style>
+
+    <Style Selector="Border.Warning">
+        <Setter Property="Background" Value="{DynamicResource NotificationWarningBackground}"/>
+    </Style>
+
+    <Style Selector="Border.Info">
+        <Setter Property="Background" Value="{DynamicResource NotificationInfoBackground}"/>
+    </Style>
+</Styles>

@@ -1,12 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:t="using:KurisuApp.Themes">
-       
-  <Design.PreviewWith>
-    <Border Padding="20">
-      <t:IconButton IconFontFamily="{DynamicResource Phosphor}" IconText="&#xe2e2;" Content="Hello"></t:IconButton>
-    </Border>
-  </Design.PreviewWith>
+        xmlns:c="using:KurisuApp.Controls">
 
     <Style Selector=":is(Button)">
         <Setter Property="Foreground" Value="{DynamicResource ResourceKey=PrimaryElementForeground}"></Setter>
@@ -32,7 +26,7 @@
         <Setter Property="Background" Value="{DynamicResource ResourceKey=PrimaryElementActiveBackground}"></Setter>
     </Style>
 
-    <Style Selector=":is(t|IconButton)">
+    <Style Selector=":is(c|IconButton)">
         <Setter Property="IconFontFamily" Value="{DynamicResource PhosphorFill}"></Setter>
     </Style>
 </Styles>

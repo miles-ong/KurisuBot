@@ -1,7 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KurisuApp.Data;
+using KurisuApp.Notification;
 using KurisuCore.APIClient;
+using KurisuCore.Enums;
 using KurisuCore.Models;
 using KurisuCore.Result;
 using System.Collections.Generic;
@@ -14,6 +16,7 @@ namespace KurisuApp.ViewModels
     public partial class AnimePageViewModel : PageViewModel
     {
         private readonly KurisuAPIClient _client;
+        private readonly NotificationService _notification;
 
         [ObservableProperty]
         private KAnime? _selectedAnime;
@@ -63,9 +66,10 @@ namespace KurisuApp.ViewModels
 
         public AnimePageViewModel() : base(ApplicationPageNames.Anime) { }
 
-        public AnimePageViewModel(KurisuAPIClient client) : base(ApplicationPageNames.Anime)
+        public AnimePageViewModel(KurisuAPIClient client, NotificationService notification) : base(ApplicationPageNames.Anime)
         {
             _client = client;
+            _notification = notification;
         }
 
         partial void OnSelectedAnimeChanged(KAnime? value)
@@ -84,9 +88,6 @@ namespace KurisuApp.ViewModels
             }
 
             CharacterSearchInput = string.Empty;
-            OnPropertyChanged(nameof(IsAddMode));
-            OnPropertyChanged(nameof(IsEditMode));
-            OnPropertyChanged(nameof(CanLink));
         }
 
         public async Task<IEnumerable<object>> SearchAnimesAsync(string query, CancellationToken cts)
@@ -130,11 +131,11 @@ namespace KurisuApp.ViewModels
                 {
                     LinkedCharacters.Add(c);
                 }
-
-                OnPropertyChanged(nameof(IsLinkMode));
-                OnPropertyChanged(nameof(IsUnlinkMode));
             }
-            catch { }
+            catch 
+            {
+                _notification.ShowFail("Failed to load linked characters for anime. Check your connection and try again.");
+            }
         }
 
         [RelayCommand(CanExecute = nameof(CanAdd))]
@@ -148,9 +149,17 @@ namespace KurisuApp.ViewModels
                 {
                     TitleInput = string.Empty;
                     DescriptionInput = string.Empty;
+                    _notification.ShowSuccess($"Successfully added {result.Value}.");
+                }
+                else
+                {
+                    _notification.ShowFail($"Failed to add anime: {result.Error}.");
                 }
             }
-            catch { }
+            catch 
+            {
+                _notification.ShowFail("Failed to add anime. Check your connection and try again.");
+            }
         }
 
         [RelayCommand(CanExecute = nameof(CanApply))]
@@ -160,10 +169,26 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                if (!SelectedAnime.Title.Equals(TitleInput)) await _client.Anime.SetTitleAsync(SelectedAnime.Id, TitleInput);
-                if (!SelectedAnime.Description.Equals(DescriptionInput)) await _client.Anime.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
+                if (!SelectedAnime.Title.Equals(TitleInput))
+                {
+                    KResult result = await _client.Anime.SetTitleAsync(SelectedAnime.Id, TitleInput);
+
+                    if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed title.");
+                    else _notification.ShowFail($"Failed to change title: {result}.");
+                }
+
+                if (!SelectedAnime.Description.Equals(DescriptionInput))
+                {
+                    KResult result = await _client.Anime.SetDescriptionAsync(SelectedAnime.Id, DescriptionInput);
+
+                    if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed description.");
+                    else _notification.ShowFail($"Failed to change description: {result}.");
+                }
             }
-            catch { }
+            catch 
+            {
+                _notification.ShowFail("Failed to apply changes to anime. Check your connection and try again.");
+            }
         }
 
         [RelayCommand(CanExecute = nameof(CanLink))]
@@ -173,16 +198,27 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                await _client.CALink.LinkAsync(SelectedCharacter.Id, SelectedAnime.Id);
+                KResult result = await _client.CALink.LinkAsync(SelectedCharacter.Id, SelectedAnime.Id);
 
-                if (!LinkedCharacters.Contains(SelectedCharacter)) LinkedCharacters.Add(SelectedCharacter);
+                if (result == KResult.Completed)
+                {
+                    if (!LinkedCharacters.Contains(SelectedCharacter)) LinkedCharacters.Add(SelectedCharacter);
 
-                SelectedCharacter = null;
-                CharacterSearchInput = string.Empty;
-                OnPropertyChanged(nameof(IsLinkMode));
-                OnPropertyChanged(nameof(IsUnlinkMode));
+                    SelectedCharacter = null;
+                    CharacterSearchInput = string.Empty;
+                    OnPropertyChanged(nameof(IsLinkMode));
+                    OnPropertyChanged(nameof(IsUnlinkMode));
+                    _notification.ShowSuccess($"Successfully linked {SelectedCharacter} to {SelectedAnime}.");
+                }
+                else
+                {
+                    _notification.ShowFail($"Failed to link {SelectedCharacter} to {SelectedAnime}: {result}.");
+                }
             }
-            catch { }
+            catch 
+            {
+                _notification.ShowFail($"Failed to link {SelectedCharacter} to {SelectedAnime}. Check your connection and try again.");
+            }
         }
 
         [RelayCommand]
@@ -192,12 +228,24 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                await _client.CALink.UnlinkAsync(character.Id, SelectedAnime.Id);
-                LinkedCharacters.Remove(character);
-                OnPropertyChanged(nameof(IsLinkMode));
-                OnPropertyChanged(nameof(IsUnlinkMode));
+                KResult result = await _client.CALink.UnlinkAsync(character.Id, SelectedAnime.Id);
+
+                if (result == KResult.Completed)
+                {
+                    LinkedCharacters.Remove(character);
+                    OnPropertyChanged(nameof(IsLinkMode));
+                    OnPropertyChanged(nameof(IsUnlinkMode));
+                    _notification.ShowSuccess($"Successfully unlinked {character} from {SelectedAnime}.");
+                }
+                else
+                {
+                    _notification.ShowFail($"Failed to unlink {character} from {SelectedAnime}: {result}.");
+                }
             }
-            catch { }
+            catch 
+            {
+                _notification.ShowFail($"Failed to unlink {character} from {SelectedAnime}. Check your connection and try again.");
+            }
         }
     }
 }

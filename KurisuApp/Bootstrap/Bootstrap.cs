@@ -1,5 +1,6 @@
 ﻿using KurisuApp.Data;
 using KurisuApp.Factories;
+using KurisuApp.Notification;
 using KurisuApp.ViewModels;
 using KurisuCore.APIClient;
 using KurisuCore.BackblazeClient;
@@ -14,17 +15,20 @@ namespace KurisuApp.Bootstrap
         {
             collection.AddSingleton(new KurisuAPIClient(Config.ApiUrl, Config.ApiKey));
             collection.AddSingleton<BackblazeClient>();
+            collection.AddSingleton<NotificationService>();
 
             collection.AddSingleton<MainViewModel>();
             collection.AddTransient<AnimePageViewModel>();
             collection.AddTransient<CharacterPageViewModel>();
             collection.AddTransient<VariantPageViewModel>();
+            collection.AddTransient<PackPageViewModel>();
 
             collection.AddSingleton<Func<ApplicationPageNames, PageViewModel>>(x => name => name switch
             {
                 ApplicationPageNames.Anime => x.GetRequiredService<AnimePageViewModel>(),
                 ApplicationPageNames.Character => x.GetRequiredService<CharacterPageViewModel>(),
                 ApplicationPageNames.Variant => x.GetRequiredService<VariantPageViewModel>(),
+                ApplicationPageNames.Pack => x.GetRequiredService<PackPageViewModel>(),
                 _ => throw new InvalidOperationException()
             });
 

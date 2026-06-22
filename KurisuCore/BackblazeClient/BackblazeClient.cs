@@ -1,6 +1,7 @@
 ﻿using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using DotNetEnv;
 
 namespace KurisuCore.BackblazeClient
 {
@@ -11,6 +12,8 @@ namespace KurisuCore.BackblazeClient
 
         public BackblazeClient()
         {
+            Env.Load();
+
             string keyId = Environment.GetEnvironmentVariable("BACKBLAZE_KEY_ID")
                 ?? throw new InvalidOperationException("Missing BACKBLAZE_KEY_ID");
 

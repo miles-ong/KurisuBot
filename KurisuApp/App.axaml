@@ -12,6 +12,7 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="Styles/AutoCompleteBoxStyles.axaml"></StyleInclude>
+        <StyleInclude Source="Styles/BorderStyles.axaml"></StyleInclude>
         <StyleInclude Source="Styles/ButtonStyles.axaml"></StyleInclude>
         <StyleInclude Source="Styles/DefaultStyles.axaml"></StyleInclude>
         <StyleInclude Source="Styles/LabelStyles.axaml"></StyleInclude>
@@ -23,9 +24,10 @@
         <!-- Controls -->
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <MergeResourceInclude Source="/Themes/IconButton.axaml"></MergeResourceInclude>
-                <MergeResourceInclude Source="/Themes/CALinksList.axaml"></MergeResourceInclude>
-                <MergeResourceInclude Source="/Themes/VariantsList.axaml"></MergeResourceInclude>
+                <MergeResourceInclude Source="/Controls/IconButton.axaml"></MergeResourceInclude>
+                <MergeResourceInclude Source="/Controls/CALinksList.axaml"></MergeResourceInclude>
+                <MergeResourceInclude Source="/Controls/NotificationBox.axaml"></MergeResourceInclude>
+                <MergeResourceInclude Source="/Controls/VariantsList.axaml"></MergeResourceInclude>
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Colors -->
@@ -40,6 +42,11 @@
             <SolidColorBrush x:Key="PrimaryElementHoverBackground">#8c3232</SolidColorBrush>
             <SolidColorBrush x:Key="PrimaryElementHoverOutline">#ad3d3d</SolidColorBrush>
             <SolidColorBrush x:Key="PrimaryElementActiveBackground">#bf4343</SolidColorBrush>
+
+            <SolidColorBrush x:Key="NotificationSuccessBackground">#3d612e</SolidColorBrush>
+            <SolidColorBrush x:Key="NotificationFailBackground">#ad3d3d</SolidColorBrush>
+            <SolidColorBrush x:Key="NotificationWarningBackground">#7a7836</SolidColorBrush>
+            <SolidColorBrush x:Key="NotificationInfoBackground">#3b3b3b</SolidColorBrush>
 
             <!-- Fonts -->
             <FontFamily x:Key="GGSans">/Assets/Fonts/gg sans Regular.ttf#gg sans Normal</FontFamily>

@@ -1,12 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:t="using:KurisuApp.Themes">
-  
-  <Design.PreviewWith>
-      <t:IconButton IconText="&#xe7f2;" Content="Anime" FontSize="40"/>
-  </Design.PreviewWith>
+        xmlns:c="using:KurisuApp.Controls">
  
-<ControlTheme x:Key="{x:Type t:IconButton}" TargetType="t:IconButton">
+<ControlTheme x:Key="{x:Type c:IconButton}" TargetType="c:IconButton">
     <Setter Property="Background" Value="{DynamicResource ButtonBackground}" />
     <Setter Property="Foreground" Value="{DynamicResource ButtonForeground}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
@@ -38,8 +34,8 @@
                 <DataTemplate DataType="x:Object">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Label Classes="icon" 
-                            Content="{Binding $parent[t:IconButton].IconText}"
-                            FontFamily="{Binding $parent[t:IconButton].IconFontFamily}">
+                            Content="{Binding $parent[c:IconButton].IconText}"
+                            FontFamily="{Binding $parent[c:IconButton].IconFontFamily}">
                         </Label>
                         <ContentPresenter Content="{Binding}"/>
                     </StackPanel>
