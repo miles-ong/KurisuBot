@@ -1,11 +1,6 @@
 ﻿using KurisuApp.Data;
 using KurisuApp.Notification;
 using KurisuCore.APIClient;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KurisuApp.ViewModels
 {
