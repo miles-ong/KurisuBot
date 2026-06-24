@@ -1,9 +1,8 @@
 ﻿using KurisuAPI.Factories;
-using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCharacterAnimeLinkRepository(DbConnectionFactory factory)
+    public sealed class KCharacterAnimeLinkRepository(DbConnectionFactory factory) : KRepositoryBase(factory)
     {
         public async Task<List<int>> GetByAnimeIdAsync(int id)
         {
@@ -13,20 +12,7 @@ namespace KurisuAPI.Repositories
                 WHERE anime_id = @id
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@id", id);
-
-            List<int> cids = new();
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                cids.Add(reader.GetInt32(0));
-            }
-
-            return cids;
+            return await QueryAsync<int>(sql, new { id });
         }
 
         public async Task<List<int>> GetByCharacterIdAsync(int id)
@@ -37,20 +23,7 @@ namespace KurisuAPI.Repositories
                 WHERE character_id = @id
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@id", id);
-
-            List<int> aids = new();
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                aids.Add(reader.GetInt32(0));
-            }
-
-            return aids;
+            return await QueryAsync<int>(sql, new { id });
         }
 
         public async Task InsertAsync(int cid, int aid)
@@ -61,31 +34,18 @@ namespace KurisuAPI.Repositories
                 ON CONFLICT DO NOTHING
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@cid", cid);
-            command.Parameters.AddWithValue("@aid", aid);
-
-            await command.ExecuteNonQueryAsync();
+            await ExecuteAsync(sql, new { cid, aid });
         }
 
         public async Task DeleteAsync(int cid, int aid)
         {
             const string sql = """
-                DELETE FROM character_anime
-                WHERE character_id = @cid AND anime_id = @aid
+
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            string message = $"Failed to find link between character (ID: {cid}) and anime (ID: {aid}).";
 
-            command.Parameters.AddWithValue("@cid", cid);
-            command.Parameters.AddWithValue("@aid", aid);
-
-            int rows = await command.ExecuteNonQueryAsync();
-
-            if (rows <= 0) throw new KeyNotFoundException($"Failed to find link between character (ID: {cid}) and anime (ID: {aid}) in database.");
+            await ExecuteOrThrowAsync(sql, new { cid, aid }, message);
         }
     }
 }

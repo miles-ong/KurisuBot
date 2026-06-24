@@ -33,6 +33,14 @@
         InvalidVariantTitle,
         IdenticalVariantTitle,
         CannotFindVariant,
-        VariantAlreadyExists
+        VariantAlreadyExists,
+
+        InvalidPackName,
+        IdenticalPackName,
+        InvalidPackPrice,
+        IdenticalPackPrice,
+        InvalidPackWeights,
+        PackIsAlreadyEnabled,
+        PackIsAlreadyDisabled
     }
 }

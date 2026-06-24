@@ -1,73 +1,24 @@
 ﻿using KurisuAPI.Factories;
 using KurisuCore.Models;
-using Npgsql;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCharacterRepository(DbConnectionFactory factory)
+    public sealed class KCharacterRepository(DbConnectionFactory factory) : KRepositoryBase<KCharacter>(factory)
     {
-        public async Task<KCharacter?> GetByIdAsync(int id)
-        {
-            const string sql = "SELECT id, name FROM characterinfo WHERE id = @id";
+        protected override string TableName => "characterinfo";
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@id", id);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            if (!await reader.ReadAsync()) return null;
-
-            return new KCharacter(
-                reader.GetInt32(0),
-                reader.GetString(1)
-            );
-        }
-
-        public async Task<List<KCharacter>> SearchAsync(string query, int limit)
-        {
-            const string sql = """
-                SELECT id, name
-                FROM characterinfo
-                WHERE name ILIKE @query
-                LIMIT @limit
-            """;
-
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@query", $"%{query}%");
-            command.Parameters.AddWithValue("@limit", limit);
-
-            await using var reader = await command.ExecuteReaderAsync();
-            List<KCharacter> result = new();
-
-            while (await reader.ReadAsync())
-            {
-                result.Add(new KCharacter(
-                    reader.GetInt32(0),
-                    reader.GetString(1)
-                ));
-            }
-
-            return result;
-        }
+        public Task<List<KCharacter>> SearchAsync(string query, int limit)
+            => SearchByColumnAsync("name", query, limit);
 
         public async Task<KCharacter> InsertAsync(string name)
         {
             const string sql = """
-                INSERT INTO characterinfo (name) 
+                INSERT INTO characterinfo (name)
                 VALUES (@name)
                 RETURNING id
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@name", name);
-
-            int id = (int)(await command.ExecuteScalarAsync())!;
+            int id = await InsertReturningAsync<int>(sql, new { name });
 
             return new KCharacter(id, name);
         }
@@ -76,33 +27,13 @@ namespace KurisuAPI.Repositories
         {
             const string sql = """
                 UPDATE characterinfo
-                SET name = @name
-                WHERE id = @id
+                SET name = @Name
+                WHERE id = @Id
             """;
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            string message = $"Failed to find character {character} in database.";
 
-            command.Parameters.AddWithValue("@id", character.Id);
-            command.Parameters.AddWithValue("@name", character.Name);
-
-            int rows = await command.ExecuteNonQueryAsync();
-
-            if (rows <= 0) throw new KeyNotFoundException($"Failed to find character {character} in database.");
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            const string sql = "DELETE FROM characterinfo WHERE id = @id";
-
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@id", id);
-
-            int rows = await command.ExecuteNonQueryAsync();
-
-            if (rows <= 0) throw new KeyNotFoundException($"Failed to find character (ID: {id}) in database.");
+            await ExecuteOrThrowAsync(sql, character, message);
         }
     }
 }

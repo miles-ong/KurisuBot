@@ -68,8 +68,11 @@ namespace KurisuCore.Models
             lock (_charactersLock) return _characters.Contains(character);
         }
 
-        public override string ToString() => $"'{Title}' (ID: {Id})";
-        public override bool Equals(object? obj) => obj is KAnime other && Id == other.Id;
-        public override int GetHashCode() => Id.GetHashCode();
+        public override string ToString() 
+            => $"'{Title}' (ID: {Id})";
+        public override bool Equals(object? obj) 
+            => obj is KAnime other && other.Id == Id;
+        public override int GetHashCode() 
+            => Id.GetHashCode();
     }
 }

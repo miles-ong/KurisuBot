@@ -1,6 +1,8 @@
-﻿using KurisuAPI.Cache;
+﻿using Dapper;
+using KurisuAPI.Cache;
 using KurisuAPI.Factories;
 using KurisuAPI.Repositories;
+using KurisuAPI.Repositories.Handlers;
 using KurisuAPI.Services;
 
 namespace KurisuAPI.Bootstrap
@@ -12,6 +14,8 @@ namespace KurisuAPI.Bootstrap
             string supabaseConnection
             )
         {
+            SqlMapper.AddTypeHandler(new KRarityTypeHandler());
+
             collection.AddSingleton(new DbConnectionFactory(supabaseConnection));
 
             collection.AddSingleton<KAnimeRepository>();

@@ -13,8 +13,6 @@ public sealed class KAnimeService(
     KEntityLoader loader
     )
 {
-    private const string _consoleTag = "[KAnimeService]";
-
     public async Task<KAnime?> GetByIdAsync(int id)
         => await loader.LoadAnimeAsync(id);
 
@@ -50,14 +48,10 @@ public sealed class KAnimeService(
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
-            Console.WriteLine($"{_consoleTag} Duplicate anime '{title}': {ex.Message}");
-
             return Result<KAnime>.Fail(KResult.AnimeAlreadyExists);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"{_consoleTag} Failed to add anime '{title}': {ex.Message}");
-
             return Result<KAnime>.Fail(KResult.DatabaseFailure);
         }
     }
@@ -78,16 +72,13 @@ public sealed class KAnimeService(
 
             return KResult.Completed;
         }
-        catch (KeyNotFoundException ex)
+        catch (KeyNotFoundException)
         {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
             return KResult.CannotFindAnime;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             anime.SetTitle(oldTitle);
-            Console.WriteLine($"{_consoleTag} Failed to update anime title for {anime}: {ex.Message}");
 
             return KResult.DatabaseFailure;
         }
@@ -110,14 +101,11 @@ public sealed class KAnimeService(
         }
         catch (KeyNotFoundException ex)
         {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
             return KResult.CannotFindAnime;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             anime.SetDescription(oldDescription);
-            Console.WriteLine($"{_consoleTag} Failed to update anime description for {anime}: {ex.Message}");
 
             return KResult.DatabaseFailure;
         }
@@ -134,16 +122,12 @@ public sealed class KAnimeService(
 
             return KResult.Completed;
         }
-        catch (KeyNotFoundException ex)
+        catch (KeyNotFoundException)
         {
-            Console.WriteLine($"{_consoleTag} {ex.Message}");
-
             return KResult.CannotFindAnime;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"{_consoleTag} Failed to delete anime {anime}: {ex.Message}");
-
             return KResult.DatabaseFailure;
         }
     }
