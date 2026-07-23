@@ -3,8 +3,8 @@ using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
 using KurisuBot.Discord.AutoCompleters;
 using KurisuBot.Discord.EmbedBuilders;
-using KurisuCore.Enums;
 using KurisuCore.Models;
+using KurisuCore.Result;
 
 namespace KurisuBot.Discord.Commands
 {
@@ -23,7 +23,7 @@ namespace KurisuBot.Discord.Commands
             if (anime is null)
             {
                 await ctx.EditResponseAsync(new DiscordMessageBuilder()
-                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KResult.CannotFindAnime, "Search failed!", user)));
+                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KDetail.CannotFindAnime, "Search failed!", user)));
 
                 return;
             }

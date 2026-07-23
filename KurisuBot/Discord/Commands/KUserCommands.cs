@@ -2,6 +2,7 @@
 using DSharpPlus.Entities;
 using KurisuBot.Discord.EmbedBuilders;
 using KurisuCore.Models;
+using KurisuCore.Result;
 
 namespace KurisuBot.Discord.Commands
 {
@@ -20,7 +21,7 @@ namespace KurisuBot.Discord.Commands
             if (user is null)
             {
                 await ctx.EditResponseAsync(new DiscordMessageBuilder()
-                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KurisuCore.Enums.KResult.CannotFindUser, "Wallet failed!", reqUser)));
+                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KDetail.CannotFindUser, "Wallet failed!", reqUser)));
 
                 return;
             }

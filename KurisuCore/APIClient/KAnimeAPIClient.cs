@@ -1,5 +1,4 @@
-﻿using KurisuCore.Enums;
-using KurisuCore.Models;
+﻿using KurisuCore.Models;
 using KurisuCore.Result;
 using System.Net.Http.Json;
 
@@ -40,7 +39,7 @@ namespace KurisuCore.APIClient
 
             if (!response.IsSuccessStatusCode)
             {
-                KResult error = await response.Content.ReadFromJsonAsync<KResult>();
+                KDetail error = await response.Content.ReadFromJsonAsync<KDetail>();
 
                 return Result<KAnime>.Fail(error);
             }
@@ -50,31 +49,31 @@ namespace KurisuCore.APIClient
             return Result<KAnime>.Ok(anime);
         }
 
-        public async Task<KResult> SetTitleAsync(int id, string newTitle)
+        public async Task<KDetail> SetTitleAsync(int id, string newTitle)
         {
             var response = await http.PatchAsJsonAsync($"anime/{id}/title", newTitle);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> SetDescriptionAsync(int id, string newDescription)
+        public async Task<KDetail> SetDescriptionAsync(int id, string newDescription)
         {
             var response = await http.PatchAsJsonAsync($"anime/{id}/description", newDescription);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> DeleteAsync(int id)
+        public async Task<KDetail> DeleteAsync(int id)
         {
             var response = await http.DeleteAsync($"anime/{id}");
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
     }
 }

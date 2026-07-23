@@ -290,25 +290,25 @@ namespace KurisuApp.ViewModels
             {
                 if (!SelectedVariant.Anime.Equals(SelectedAnime))
                 {
-                    KResult result = await _client.Variant.SetAnimeAsync(SelectedVariant.Id, SelectedAnime);
+                    KDetail result = await _client.Variant.SetAnimeAsync(SelectedVariant.Id, SelectedAnime);
 
-                    if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed anime.");
+                    if (result == KDetail.Completed) _notification.ShowSuccess("Successfully changed anime.");
                     else _notification.ShowFail($"Failed to change anime: {result}.");
                 }
 
                 if (SelectedVariant.Rarity != SelectedRarity)
                 {
-                    KResult result = await _client.Variant.SetRarityAsync(SelectedVariant.Id, SelectedRarity);
+                    KDetail result = await _client.Variant.SetRarityAsync(SelectedVariant.Id, SelectedRarity);
 
-                    if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed rarity.");
+                    if (result == KDetail.Completed) _notification.ShowSuccess("Successfully changed rarity.");
                     else _notification.ShowFail($"Failed to change rarity: {result}.");
                 }
 
                 if (!SelectedVariant.Title.Equals(TitleInput))
                 {
-                    KResult result = await _client.Variant.SetTitleAsync(SelectedVariant.Id, TitleInput);
+                    KDetail result = await _client.Variant.SetTitleAsync(SelectedVariant.Id, TitleInput);
 
-                    if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed title.");
+                    if (result == KDetail.Completed) _notification.ShowSuccess("Successfully changed title.");
                     else _notification.ShowFail($"Failed to change title: {result}.");
                 }
             }
@@ -325,9 +325,9 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                KResult result = await _client.Variant.DeleteAsync(SelectedVariant.Id);
+                KDetail result = await _client.Variant.DeleteAsync(SelectedVariant.Id);
 
-                if (result == KResult.Completed)
+                if (result == KDetail.Completed)
                 {
                     Variants.Remove(SelectedVariant);
                     _notification.ShowSuccess($"Successfully deleted {SelectedVariant}.");
@@ -355,9 +355,9 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                KResult result = await _client.Variant.DeleteAsync(variant.Id);
+                KDetail result = await _client.Variant.DeleteAsync(variant.Id);
                 
-                if (result == KResult.Completed)
+                if (result == KDetail.Completed)
                 {
                     Variants.Remove(variant);
 

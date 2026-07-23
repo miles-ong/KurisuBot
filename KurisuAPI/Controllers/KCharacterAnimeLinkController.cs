@@ -1,27 +1,32 @@
 ﻿using KurisuAPI.Services;
-using KurisuCore.Enums;
+using KurisuCore.Models;
+using KurisuCore.Result;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KurisuAPI.Controllers
 {
     [ApiController]
     [Route("calinks")]
-    public sealed class KCharacterAnimeLinkController(KCharacterAnimeLinkService linkService) : ControllerBase
+    public sealed class KCharacterAnimeLinkController(
+        KCharacterAnimeLinkService linkService,
+        KCharacterService characterService,
+        KAnimeService animeService) 
+        : ControllerBase
     {
         [HttpPost]
         public async Task<IActionResult> LinkAsync([FromBody] LinkRequest req)
         {
-            KResult result = await linkService.LinkAsync(req.CharacterId, req.AnimeId);
+            var detail = await linkService.LinkAsync(req.CharacterId, req.AnimeId);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
         [HttpDelete]
-        public async Task<IActionResult> UnlinkAsync([FromBody] LinkRequest req)
+        public async Task<IActionResult> UnlinkAsync([FromBody] KCharacter character, [FromBody] KAnime anime)
         {
-            KResult result = await linkService.UnlinkAsync(req.CharacterId, req.AnimeId);
+            var detail = await linkService.UnlinkAsync(character, anime);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
         public record LinkRequest(int CharacterId, int AnimeId);

@@ -1,5 +1,4 @@
-﻿using KurisuCore.Enums;
-using KurisuCore.Models;
+﻿using KurisuCore.Models;
 using KurisuCore.Result;
 using System.Net.Http.Json;
 
@@ -49,7 +48,7 @@ namespace KurisuCore.APIClient
 
             if (!response.IsSuccessStatusCode)
             {
-                KResult error = await response.Content.ReadFromJsonAsync<KResult>();
+                KDetail error = await response.Content.ReadFromJsonAsync<KDetail>();
 
                 return Result<KCharacter>.Fail(error);
             }
@@ -59,22 +58,22 @@ namespace KurisuCore.APIClient
             return Result<KCharacter>.Ok(character);
         }
 
-        public async Task<KResult> SetNameAsync(int id, string newName)
+        public async Task<KDetail> SetNameAsync(int id, string newName)
         {
             var response = await http.PatchAsJsonAsync($"characters/{id}/name", newName);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> DeleteAsync(int id)
+        public async Task<KDetail> DeleteAsync(int id)
         {
             var response = await http.DeleteAsync($"characters/{id}");
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
     }
 }

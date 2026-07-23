@@ -22,7 +22,7 @@ namespace KurisuCore.APIClient
 
             if (!response.IsSuccessStatusCode)
             {
-                KResult error = await response.Content.ReadFromJsonAsync<KResult>();
+                KDetail error = await response.Content.ReadFromJsonAsync<KDetail>();
 
                 return Result<KVariant>.Fail(error);
             }
@@ -32,40 +32,40 @@ namespace KurisuCore.APIClient
             return Result<KVariant>.Ok(variant);
         }
 
-        public async Task<KResult> SetAnimeAsync(int id, KAnime newAnime)
+        public async Task<KDetail> SetAnimeAsync(int id, KAnime newAnime)
         {
             var response = await http.PatchAsJsonAsync($"variants/{id}/anime", newAnime);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> SetRarityAsync(int id, KRarity newRarity)
+        public async Task<KDetail> SetRarityAsync(int id, KRarity newRarity)
         {
             var response = await http.PatchAsJsonAsync($"variants/{id}/rarity", newRarity);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> SetTitleAsync(int id, string newTitle)
+        public async Task<KDetail> SetTitleAsync(int id, string newTitle)
         {
             var response = await http.PatchAsJsonAsync($"variants/{id}/title", newTitle);
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> DeleteAsync(int id)
+        public async Task<KDetail> DeleteAsync(int id)
         {
             var response = await http.DeleteAsync($"variants/{id}");
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
     }
 }

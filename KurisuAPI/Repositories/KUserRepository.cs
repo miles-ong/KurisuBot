@@ -1,124 +1,62 @@
 ﻿using KurisuAPI.Factories;
-using KurisuCore.Enums;
+using KurisuAPI.Repositories.Bases;
 using KurisuCore.Models;
+using KurisuCore.Models.Data;
 using Npgsql;
 using NpgsqlTypes;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KUserRepository(DbConnectionFactory factory)
+    public sealed class KUserRepository(DbConnectionFactory factory) : KDataBulkRepository<KUserData>(factory)
     {
-        public async Task<KUser?> GetByIdAsync(long id)
+        protected override string TableName => "userdata";
+        protected override string SelectColumns =>
+            "id, settings, last_quiz_regen AS LastQuizRegen, quiz_tokens AS QuizTokens, pity, coins, r_dust AS RDust, sr_dust AS SrDust, ssr_dust AS SsrDust, ur_dust AS UrDust";
+        protected override string InsertColumns =>
+            "id, settings, last_quiz_regen, quiz_tokens, pity, coins, r_dust, sr_dust, ssr_dust, ur_dust";
+        protected override string InsertValues =>
+            "@Id, @Settings, @LastQuizRegen, @QuizTokens, @Pity, @Coins, @RDust, @SrDust, @SsrDust, @UrDust";
+        protected override string UpdateQuery => """
+                                                 UPDATE userdata
+                                                 SET settings           = @Settings,
+                                                     last_quiz_regen    = @LastQuizRegen,
+                                                     quiz_tokens        = @QuizTokens,
+                                                     pity               = @Pity,
+                                                     coins              = @Coins,
+                                                     r_dust             = @RDust,
+                                                     sr_dust            = @SrDust,
+                                                     ssr_dust           = @SsrDust,
+                                                     ur_dust            = @UrDust
+                                                 WHERE id = @Id
+                                                 """;
+        protected override string TempTableColumns => """
+                                                      id BIGINT PRIMARY KEY,
+                                                      settings JSONB,
+                                                      last_quiz_regen TIMESTAMPTZ,
+                                                      quiz_tokens INT,
+                                                      pity INT,
+                                                      coins INT,
+                                                      r_dust INT,
+                                                      sr_dust INT,
+                                                      ssr_dust INT,
+                                                      ur_dust INT
+                                                      """;
+
+        protected override async Task WriteBulkRowAsync(
+            NpgsqlBinaryImporter writer, 
+            KUserData data,
+            CancellationToken token)
         {
-            const string sql = """
-                SELECT id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust
-                FROM userdata
-                WHERE id = @id
-            """;
-
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("@id", id);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            if (!await reader.ReadAsync()) return null;
-
-            int settingsOrdinal = reader.GetOrdinal("settings");
-            KSettings settings = reader.IsDBNull(settingsOrdinal)
-                ? new KSettings()
-                : KSettingsSerializer.Deserialize(reader.GetString(settingsOrdinal));
-
-            DateTime lastQuizRegen = DateTime.SpecifyKind(
-                reader.GetDateTime(reader.GetOrdinal("lastquizregen")),
-                DateTimeKind.Utc);
-
-            KUser user = new KUser(id, "", settings, lastQuizRegen);
-
-            user.SetBalance(KBalance.Pity, reader.GetInt32(reader.GetOrdinal("pity")));
-            user.SetBalance(KBalance.QuizTokens, reader.GetInt32(reader.GetOrdinal("quiztokens")));
-            user.SetBalance(KBalance.Coins, reader.GetInt32(reader.GetOrdinal("coins")));
-            user.SetBalance(KBalance.RDust, reader.GetInt32(reader.GetOrdinal("rdust")));
-            user.SetBalance(KBalance.SRDust, reader.GetInt32(reader.GetOrdinal("srdust")));
-            user.SetBalance(KBalance.SSRDust, reader.GetInt32(reader.GetOrdinal("ssrdust")));
-            user.SetBalance(KBalance.URDust, reader.GetInt32(reader.GetOrdinal("urdust")));
-
-            return user;
-        }
-
-        public async Task BulkUpsertAsync(IEnumerable<KUser> users, CancellationToken token)
-        {
-            await using var connection = await factory.CreateAsync(token);
-            await using var transaction = await connection.BeginTransactionAsync(token);
-
-            const string tempTableSql = """
-                CREATE TEMP TABLE temp_userdata (
-                    id BIGINT PRIMARY KEY,
-                    settings JSONB,
-                    quiztokens INT,
-                    lastquizregen TIMESTAMPTZ,
-                    pity INT,
-                    coins INT,
-                    rdust INT,
-                    srdust INT,
-                    ssrdust INT,
-                    urdust INT
-                ) ON COMMIT DROP
-            """;
-
-            await using var tempCommand = new NpgsqlCommand(tempTableSql, connection, transaction);
-            await tempCommand.ExecuteNonQueryAsync(token);
-            NpgsqlBinaryImporter? writer = null;
-
-            try
-            {
-                writer = await connection.BeginBinaryImportAsync("""
-                    COPY temp_userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust)
-                    FROM STDIN (FORMAT BINARY)
-                """);
-
-                foreach(KUser user in users)
-                {
-                    await writer.StartRowAsync();
-                    await writer.WriteAsync(user.Id, NpgsqlDbType.Bigint);
-                    await writer.WriteAsync(KSettingsSerializer.Serialize(user.Settings), NpgsqlDbType.Jsonb);
-                    await writer.WriteAsync(user.GetBalance(KBalance.QuizTokens), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(DateTime.SpecifyKind(user.LastQuizRegen, DateTimeKind.Utc), NpgsqlDbType.TimestampTz);
-                    await writer.WriteAsync(user.GetBalance(KBalance.Pity), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(user.GetBalance(KBalance.Coins), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(user.GetBalance(KBalance.RDust), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(user.GetBalance(KBalance.SRDust), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(user.GetBalance(KBalance.SSRDust), NpgsqlDbType.Integer);
-                    await writer.WriteAsync(user.GetBalance(KBalance.URDust), NpgsqlDbType.Integer);
-                }
-
-                await writer.CompleteAsync(token);
-            }
-            finally
-            {
-                writer?.Dispose();
-            }
-
-            const string upsertSql = """
-                INSERT INTO userdata (id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust)
-                SELECT id, settings, quiztokens, lastquizregen, pity, coins, rdust, srdust, ssrdust, urdust
-                FROM temp_userdata
-                ON CONFLICT (id) DO UPDATE SET
-                    settings        = EXCLUDED.settings,
-                    quiztokens      = EXCLUDED.quiztokens,
-                    lastquizregen   = EXCLUDED.lastquizregen,
-                    pity            = EXCLUDED.pity,
-                    coins           = EXCLUDED.coins,
-                    rdust           = EXCLUDED.rdust,
-                    srdust          = EXCLUDED.srdust,
-                    ssrdust         = EXCLUDED.ssrdust,
-                    urdust          = EXCLUDED.urdust
-            """;
-
-            await using var upsertCommand = new NpgsqlCommand(upsertSql, connection, transaction);
-            await upsertCommand.ExecuteNonQueryAsync(token);
-            await transaction.CommitAsync(token);
+            await writer.WriteAsync(data.Id, NpgsqlDbType.Bigint, token);
+            await writer.WriteAsync(KSettingsSerializer.Serialize(data.Settings), NpgsqlDbType.Jsonb, token);
+            await writer.WriteAsync(DateTime.SpecifyKind(data.LastQuizRegen, DateTimeKind.Utc), NpgsqlDbType.TimestampTz, token);
+            await writer.WriteAsync(data.QuizTokens, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.Pity, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.Coins, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.RDust, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.SrDust, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.SsrDust, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(data.UrDust, NpgsqlDbType.Integer, token);
         }
     }
 }

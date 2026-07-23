@@ -1,20 +1,20 @@
-﻿using KurisuCore.Enums;
+﻿using KurisuCore.Result;
 using System.Net.Http.Json;
 
 namespace KurisuCore.APIClient
 {
     public sealed class KCharacterAnimeLinkAPIClient(HttpClient http)
     {
-        public async Task<KResult> LinkAsync(int characterId, int animeId)
+        public async Task<KDetail> LinkAsync(int characterId, int animeId)
         {
             var response = await http.PostAsJsonAsync("calinks", new { characterId, animeId });
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
 
-        public async Task<KResult> UnlinkAsync(int characterId, int animeId)
+        public async Task<KDetail> UnlinkAsync(int characterId, int animeId)
         {
             var response = await http.SendAsync(new HttpRequestMessage
             {
@@ -23,9 +23,9 @@ namespace KurisuCore.APIClient
                 Content = JsonContent.Create(new { characterId, animeId })
             });
 
-            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KResult>();
+            if (!response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<KDetail>();
 
-            return KResult.Completed;
+            return KDetail.Completed;
         }
     }
 }

@@ -1,40 +1,20 @@
 ﻿using KurisuAPI.Factories;
-using KurisuCore.Models;
+using KurisuAPI.Repositories.Bases;
+using KurisuCore.Models.Data;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KAnimeRepository(DbConnectionFactory factory) : KRepositoryBase<KAnime>(factory)
+    public sealed class KAnimeRepository(DbConnectionFactory factory) : KDataSearchRepository<KAnimeData>(factory)
     {
         protected override string TableName => "animeinfo";
-
-        public Task<List<KAnime>> SearchAsync(string query, int limit)
-            => SearchByColumnAsync("title", query, limit);
-
-        public async Task<KAnime> InsertAsync(string title, string? description)
-        {
-            const string sql = """
-                INSERT INTO animeinfo (title, description)
-                VALUES (@title, @description)
-                RETURNING id
-            """;
-
-            int id = await InsertReturningAsync<int>(sql, new { title, description });
-
-            return new KAnime(id, title, description ?? "No description.");
-        }
-
-        public async Task UpdateAsync(KAnime anime)
-        {
-            const string sql = """
-                UPDATE animeinfo
-                SET title = @Title,
-                    description = @Description
-                WHERE id = @Id
-            """;
-
-            string message = $"Failed to find anime {anime} in database.";
-
-            await ExecuteOrThrowAsync(sql, anime, message);
-        }
+        protected override string SearchColumn => "title";
+        protected override string InsertColumns => "title, description";
+        protected override string InsertValues => "@Title, @Description";
+        protected override string UpdateQuery => """
+                                                 UPDATE animeinfo
+                                                 SET title       = @Title,
+                                                     description = @Description
+                                                 WHERE id = @Id
+                                                 """;
     }
 }

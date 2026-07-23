@@ -6,6 +6,7 @@ using KurisuBot.Quiz;
 using KurisuBot.Quiz.Enums;
 using KurisuCore.Enums;
 using KurisuCore.Models;
+using KurisuCore.Result;
 
 namespace KurisuBot.Discord.Commands
 {
@@ -22,7 +23,7 @@ namespace KurisuBot.Discord.Commands
             if (owner is null)
             {
                 await ctx.EditResponseAsync(new DiscordMessageBuilder()
-                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KResult.CannotFindUser, "Quiz failed!")));
+                    .AddEmbed(KEmbedBuilder.BuildFailEmbed(KDetail.CannotFindUser, "Quiz failed!")));
 
                 return;
             }

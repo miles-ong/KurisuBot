@@ -1,23 +1,24 @@
-﻿using KurisuCore.Enums;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using KurisuCore.Models.Bases;
+using KurisuCore.Models.Data;
 
 namespace KurisuCore.Models
 {
-    public sealed class KCharacter : IKurisuDisplayItem
+    [method: JsonConstructor]
+    public sealed class KCharacter(string name) : KEntity<KCharacterData>, IKLinkable<KAnime>
     {
-        public string DisplayName => Name;
-        public int Id { get; }
-        public string Name { get; private set; }
-        
-        private readonly HashSet<KAnime> _animes = new();
-        private readonly HashSet<KVariant> _variants = new();
-        private readonly object _animesLock = new();
-        private readonly object _variantsLock = new();
+        public string Name { get; internal set; } = name;
+        public override string DisplayName => Name;
+
+        private readonly HashSet<KAnime> _anime = [];
+        private readonly HashSet<KVariant> _variants = [];
+        private readonly Lock _animeLock = new();
+        private readonly Lock _variantsLock = new();
 
         [JsonIgnore]
-        internal IEnumerable<KAnime> Animes
+        internal IEnumerable<KAnime> Anime
         {
-            get { lock (_animesLock) return _animes.ToList(); }
+            get { lock (_animeLock) return _anime.ToList(); }
         }
 
         [JsonIgnore]
@@ -26,39 +27,19 @@ namespace KurisuCore.Models
             get { lock (_variantsLock) return _variants.ToList(); }
         }
 
-        [JsonConstructor]
-        public KCharacter(int id, string name)
+        void IKLinkable<KAnime>.Link(KAnime anime)
         {
-            Id = id;
-            Name = name;
+            lock (_animeLock) _anime.Add(anime);
         }
 
-        internal KResult SetName(string name)
+        void IKLinkable<KAnime>.Unlink(KAnime anime)
         {
-            if (string.IsNullOrWhiteSpace(name)) return KResult.InvalidCharacterName;
-
-            string trimmed = name.Trim();
-
-            if (trimmed == Name) return KResult.IdenticalCharacterName;
-
-            Name = trimmed;
-
-            return KResult.Completed;
-        }
-
-        internal void LinkAnime(KAnime anime)
-        {
-            lock (_animesLock) _animes.Add(anime);
-        }
-
-        internal void UnlinkAnime(KAnime anime)
-        {
-            lock (_animesLock) _animes.Remove(anime);
+            lock (_animeLock) _anime.Remove(anime);
         }
 
         internal bool ContainsAnime(KAnime anime)
         {
-            lock (_animesLock) return _animes.Contains(anime);
+            lock (_animeLock) return _anime.Contains(anime);
         }
 
         internal void AddVariant(KVariant variant)
@@ -71,8 +52,12 @@ namespace KurisuCore.Models
             lock (_variantsLock) _variants.Remove(variant);
         }
 
+        internal bool ContainsVariant(KVariant variant)
+        {
+            lock (_variantsLock) return _variants.Contains(variant);
+        }
+
+        internal override KCharacterData ToData() => new(Id, Name);
         public override string ToString() => $"'{Name}' (ID: {Id})";
-        public override bool Equals(object? obj) => obj is KCharacter other && Id == other.Id;
-        public override int GetHashCode() => Id.GetHashCode();
     }
 }

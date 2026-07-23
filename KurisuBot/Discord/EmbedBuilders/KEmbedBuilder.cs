@@ -1,6 +1,7 @@
 ﻿using DSharpPlus.Entities;
 using KurisuCore.Enums;
 using KurisuCore.Models;
+using KurisuCore.Result;
 
 namespace KurisuBot.Discord.EmbedBuilders
 {
@@ -31,7 +32,7 @@ namespace KurisuBot.Discord.EmbedBuilders
             builder.WithFooter($"Requested by {user.Username}");
         }
 
-        public static DiscordEmbed BuildFailEmbed(KResult result, string commandMessage, KUser? reqUser = null)
+        public static DiscordEmbed BuildFailEmbed(KDetail result, string commandMessage, KUser? reqUser = null)
         {
             DiscordEmbedBuilder builder = Create(
                 "Command failed!",

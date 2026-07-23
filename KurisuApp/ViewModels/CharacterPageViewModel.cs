@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using KurisuApp.Data;
 using KurisuApp.Notification;
 using KurisuCore.APIClient;
-using KurisuCore.Enums;
 using KurisuCore.Models;
 using KurisuCore.Result;
 using System.Collections.Generic;
@@ -160,9 +159,9 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                KResult result = await _client.Character.SetNameAsync(SelectedCharacter.Id, NameInput);
+                KDetail result = await _client.Character.SetNameAsync(SelectedCharacter.Id, NameInput);
 
-                if (result == KResult.Completed) _notification.ShowSuccess("Successfully changed name.");
+                if (result == KDetail.Completed) _notification.ShowSuccess("Successfully changed name.");
                 else _notification.ShowFail($"Failed to change name: {result}");
             }
             catch 
@@ -178,9 +177,9 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                KResult result = await _client.CALink.LinkAsync(SelectedCharacter.Id, SelectedAnime.Id);
+                KDetail result = await _client.CALink.LinkAsync(SelectedCharacter.Id, SelectedAnime.Id);
 
-                if (result == KResult.Completed)
+                if (result == KDetail.Completed)
                 {
                     if (!LinkedAnimes.Contains(SelectedAnime)) LinkedAnimes.Add(SelectedAnime);
 
@@ -208,9 +207,9 @@ namespace KurisuApp.ViewModels
 
             try
             {
-                KResult result = await _client.CALink.UnlinkAsync(SelectedCharacter.Id, anime.Id);
+                KDetail result = await _client.CALink.UnlinkAsync(SelectedCharacter.Id, anime.Id);
 
-                if (result == KResult.Completed)
+                if (result == KDetail.Completed)
                 {
                     LinkedAnimes.Remove(anime);
                     OnPropertyChanged(nameof(IsLinkMode));

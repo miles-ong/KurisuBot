@@ -1,6 +1,7 @@
 ﻿using KurisuAPI.Services;
 using KurisuCore.Enums;
 using KurisuCore.Models;
+using KurisuCore.Models.Data;
 using KurisuCore.Result;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,56 +11,80 @@ namespace KurisuAPI.Controllers
     [Route("variants")]
     public sealed class KVariantController(KVariantService variantService) : ControllerBase
     {
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> Get(int id)
         {
-            KVariant? variant = await variantService.GetByIdAsync(id);
+            var variant = await variantService.GetByIdAsync(id);
 
-            if (variant is null) return NotFound(KResult.CannotFindVariant);
+            if (variant is null) return NotFound(KDetail.VariantNotFound);
 
             return Ok(variant);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Add([FromBody] AddVariantRequest req)
+        [HttpGet("{id:int}/packs")]
+        public async Task<IActionResult> GetPacks(int id)
         {
-            Result<KVariant> result = await variantService.AddAsync(req.CharacterId, req.AnimeId, req.Rarity, req.Title);
+            var variant = await variantService.GetByIdAsync(id);
 
-            return result.Success ? Ok(result.Value) : Conflict(result.Error);
+            if (variant is null) return NotFound(KDetail.VariantNotFound);
+
+            return Ok(variant.Packs);
         }
 
-        [HttpPatch("{id}/anime")]
+        [HttpPost]
+        public async Task<IActionResult> Add([FromBody] KVariantData data)
+        {
+            var result = await variantService.AddAsync(data);
+
+            return result.Success ? Ok(result.Value) : Conflict(result.Detail);
+        }
+
+        [HttpPatch("{id:int}/character")]
+        public async Task<IActionResult> SetCharacter(int id, [FromBody] KCharacter newCharacter)
+        {
+            var detail = await variantService.SetCharacterAsync(id, newCharacter);
+
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
+        }
+
+        [HttpPatch("{id:int}/anime")]
         public async Task<IActionResult> SetAnime(int id, [FromBody] KAnime newAnime)
         {
-            KResult result = await variantService.SetAnimeAsync(id, newAnime);
+            var detail = await variantService.SetAnimeAsync(id, newAnime);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpPatch("{id}/rarity")]
+        [HttpPatch("{id:int}/rarity")]
         public async Task<IActionResult> SetRarity(int id, [FromBody] KRarity newRarity)
         {
-            KResult result = await variantService.SetRarityAsync(id, newRarity);
+            var detail = await variantService.SetRarityAsync(id, newRarity);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpPatch("{id}/title")]
+        [HttpPatch("{id:int}/title")]
         public async Task<IActionResult> SetTitle(int id, [FromBody] string newTitle)
         {
-            KResult result = await variantService.SetTitleAsync(id, newTitle);
+            var detail = await variantService.SetTitleAsync(id, newTitle);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpDelete("{id}")]
+        [HttpPatch("{id:int}/artist")]
+        public async Task<IActionResult> SetArtist(int id, [FromBody] string newArtist)
+        {
+            var detail = await variantService.SetArtistAsync(id, newArtist);
+            
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
+        }
+
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            KResult result = await variantService.DeleteAsync(id);
+            var detail = await variantService.DeleteAsync(id);
 
-            return result == KResult.Completed ? Ok() : NotFound(result);
+            return detail == KDetail.Completed ? Ok() : NotFound(detail);
         }
-
-        public record AddVariantRequest(int CharacterId, int AnimeId, KRarity Rarity, string Title);
     }
 }

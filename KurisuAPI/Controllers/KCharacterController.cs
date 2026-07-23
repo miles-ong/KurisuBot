@@ -1,6 +1,5 @@
 ﻿using KurisuAPI.Services;
-using KurisuCore.Enums;
-using KurisuCore.Models;
+using KurisuCore.Models.Data;
 using KurisuCore.Result;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,32 +9,32 @@ namespace KurisuAPI.Controllers
     [Route("characters")]
     public sealed class KCharacterController(KCharacterService characterService) : ControllerBase
     {
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> Get(int id)
         {
-            KCharacter? character = await characterService.GetByIdAsync(id);
+            var character = await characterService.GetByIdAsync(id);
 
-            if (character is null) return NotFound(KResult.CannotFindCharacter);
+            if (character is null) return NotFound(KDetail.CharacterNotFound);
 
             return Ok(character);
         }
 
-        [HttpGet("{id}/anime")]
-        public async Task<IActionResult> GetAnimes(int id)
+        [HttpGet("{id:int}/anime")]
+        public async Task<IActionResult> GetAnime(int id)
         {
-            KCharacter? character = await characterService.GetByIdAsync(id);
+            var character = await characterService.GetByIdAsync(id);
 
-            if (character is null) return NotFound(KResult.CannotFindCharacter);
+            if (character is null) return NotFound(KDetail.CharacterNotFound);
 
-            return Ok(character.Animes);
+            return Ok(character.Anime);
         }
 
-        [HttpGet("{id}/variants")]
+        [HttpGet("{id:int}/variants")]
         public async Task<IActionResult> GetVariants(int id)
         {
-            KCharacter? character = await characterService.GetByIdAsync(id);
+            var character = await characterService.GetByIdAsync(id);
 
-            if (character is null) return NotFound(KResult.CannotFindCharacter);
+            if (character is null) return NotFound(KDetail.CharacterNotFound);
 
             return Ok(character.Variants);
         }
@@ -45,27 +44,27 @@ namespace KurisuAPI.Controllers
             => Ok(await characterService.SearchAsync(query, limit));
 
         [HttpPost]
-        public async Task<IActionResult> Add([FromBody] string name)
+        public async Task<IActionResult> Add([FromBody] KCharacterData data)
         {
-            Result<KCharacter> result = await characterService.AddAsync(name);
+            var result = await characterService.AddAsync(data);
 
-            return result.Success ? Ok(result.Value) : Conflict(result.Error);
+            return result.Success ? Ok(result.Value) : Conflict(result.Detail);
         }
 
-        [HttpPatch("{id}/name")]
+        [HttpPatch("{id:int}/name")]
         public async Task<IActionResult> SetName(int id, [FromBody] string newName)
         {
-            KResult result = await characterService.SetNameAsync(id, newName);
+            var detail = await characterService.SetNameAsync(id, newName);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            KResult result = await characterService.DeleteAsync(id);
+            var detail = await characterService.DeleteAsync(id);
 
-            return result == KResult.Completed ? Ok() : NotFound(result);
+            return detail == KDetail.Completed ? Ok() : NotFound(detail);
         }
     }
 }

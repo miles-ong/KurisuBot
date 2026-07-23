@@ -1,7 +1,5 @@
-﻿using KurisuAPI.Records;
-using KurisuAPI.Services;
-using KurisuCore.Enums;
-using KurisuCore.Models;
+﻿using KurisuAPI.Services;
+using KurisuCore.Models.Data;
 using KurisuCore.Result;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,22 +9,22 @@ namespace KurisuAPI.Controllers
     [Route("anime")]
     public sealed class KAnimeController(KAnimeService animeService) : ControllerBase
     {
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> Get(int id)
         {
-            KAnime? anime = await animeService.GetByIdAsync(id);
+            var anime = await animeService.GetByIdAsync(id);
 
-            if (anime is null) return NotFound(KResult.CannotFindAnime);
+            if (anime is null) return NotFound(KDetail.AnimeNotFound);
 
             return Ok(anime);
         }
 
-        [HttpGet("{id}/characters")]
+        [HttpGet("{id:int}/characters")]
         public async Task<IActionResult> GetCharacters(int id)
         {
-            KAnime? anime = await animeService.GetByIdAsync(id);
+            var anime = await animeService.GetByIdAsync(id);
 
-            if (anime is null) return NotFound(KResult.CannotFindAnime);
+            if (anime is null) return NotFound(KDetail.AnimeNotFound);
 
             return Ok(anime.Characters);
         }
@@ -36,35 +34,35 @@ namespace KurisuAPI.Controllers
             => Ok(await animeService.SearchAsync(query, limit));
 
         [HttpPost]
-        public async Task<IActionResult> Add([FromBody] KAnimeRow req)
+        public async Task<IActionResult> Add([FromBody] KAnimeData data)
         {
-            Result<KAnime> result = await animeService.AddAsync(req.Title, req.Description);
+            var result = await animeService.AddAsync(data);
 
-            return result.Success ? Ok(result.Value) : Conflict(result.Error);
+            return result.Success ? Ok(result.Value) : Conflict(result.Detail);
         }
 
-        [HttpPatch("{id}/title")]
+        [HttpPatch("{id:int}/title")]
         public async Task<IActionResult> SetTitle(int id, [FromBody] string newTitle)
         {
-            KResult result = await animeService.SetTitleAsync(id, newTitle);
+            var detail = await animeService.SetTitleAsync(id, newTitle);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpPatch("{id}/description")]
+        [HttpPatch("{id:int}/description")]
         public async Task<IActionResult> SetDescription(int id, [FromBody] string newDescription)
         {
-            KResult result = await animeService.SetDescriptionAsync(id, newDescription);
+            var detail = await animeService.SetDescriptionAsync(id, newDescription);
 
-            return result == KResult.Completed ? Ok() : BadRequest(result);
+            return detail == KDetail.Completed ? Ok() : BadRequest(detail);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            KResult result = await animeService.DeleteAsync(id);
+            var detail = await animeService.DeleteAsync(id);
 
-            return result == KResult.Completed ? Ok() : NotFound(result);
+            return detail == KDetail.Completed ? Ok() : NotFound(detail);
         }
     }
 }

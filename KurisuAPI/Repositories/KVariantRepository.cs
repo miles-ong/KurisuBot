@@ -1,50 +1,32 @@
 ﻿using KurisuAPI.Factories;
-using KurisuAPI.Records;
-using KurisuCore.Enums;
-using KurisuCore.Models;
+using KurisuAPI.Repositories.Bases;
+using KurisuCore.Models.Data;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KVariantRepository(DbConnectionFactory factory) : KRepositoryBase<KVariantRow>(factory)
+    public sealed class KVariantRepository(DbConnectionFactory factory) : KDataRepository<KVariantData>(factory)
     {
         protected override string TableName => "variantinfo";
         protected override string SelectColumns => "id, character_id AS CharacterId, anime_id AS AnimeId, rarity, title";
+        protected override string InsertColumns => "character_id, anime_id, rarity, title, artist";
+        protected override string InsertValues => "@CharacterId, @AnimeId, @Rarity::cardrarity, @Title, @Artist";
+        protected override string UpdateQuery => """
+                                                 UPDATE variantinfo
+                                                 SET anime_id    = @AnimeId,
+                                                     rarity      = @Rarity::cardrarity,
+                                                     title       = @Title,
+                                                     artist      = @Artist
+                                                 WHERE id = @Id
+                                                 """;
 
-        public async Task<List<KVariantRow>> GetByCharacterIdAsync(int cid)
-            => await QueryAsync($"SELECT {SelectColumns} FROM variantinfo WHERE character_id = @cid", new { cid }); 
-
-        public async Task<int> InsertAsync(int cid, int aid, KRarity rarity, string title)
+        public Task<List<KVariantData>> GetByCharacterIdAsync(int cId)
         {
-            const string sql = """
-                INSERT INTO variantinfo (character_id, anime_id, rarity, title)
-                VALUES (@cid, @aid, @rarity::cardrarity, @title)
-                RETURNING id
-            """;
+            var sql = $"""
+                       SELECT {SelectColumns} FROM variantinfo
+                       WHERE character_id = @cId
+                       """;
 
-            return await InsertReturningAsync<int>(sql, new { cid, aid, rarity = rarity.ToString(), title });
-        }
-
-        public async Task UpdateAsync(KVariant variant)
-        {
-            const string sql = """
-                UPDATE variantinfo
-                SET anime_id    = @AnimeId,
-                    rarity      = @Rarity::cardrarity,
-                    title       = @Title
-                WHERE id = @Id
-            """;
-
-            object parameters = new
-            {
-                variant.Id,
-                AnimeId = variant.Anime.Id,
-                Rarity = variant.Rarity.ToString(),
-                variant.Title
-            };
-
-            string message = $"Failed to find variant {variant} in database.";
-
-            await ExecuteOrThrowAsync(sql, parameters, message);
+            return QueryAsync(sql, new { cId });
         }
     }
 }

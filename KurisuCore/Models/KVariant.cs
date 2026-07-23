@@ -1,61 +1,52 @@
 ﻿using KurisuCore.Enums;
 using System.Text.Json.Serialization;
+using KurisuCore.Models.Bases;
+using KurisuCore.Models.Data;
 
 namespace KurisuCore.Models
 {
-    public sealed class KVariant : IKurisuDisplayItem
+    [method: JsonConstructor]
+    public sealed class KVariant(
+        KCharacter character,
+        KAnime anime,
+        KRarity rarity,
+        string title,
+        string? artist) 
+        : KEntity<KVariantData>, IKLinkable<KPack>
     {
-        public string DisplayName => Title;
-        public int Id { get; }
-        public KCharacter Character { get; private set; }
-        public KAnime Anime { get; private set; }
-        public KRarity Rarity { get; private set; }
-        public string Title { get; private set; }
+        public KCharacter Character { get; internal set; } = character;
+        public KAnime Anime { get; internal set; } = anime;
+        public KRarity Rarity { get; internal set; } = rarity;
+        public string Title { get; internal set; } = title;
+        public string? Artist { get; internal set; } = artist;
         public string ImageFileName => $"VARIANT_{Id}";
+        public override string DisplayName => Title;
 
-        [JsonConstructor]
-        public KVariant(int id, KCharacter character, KAnime anime, KRarity rarity, string title)
+        private readonly HashSet<KPack> _packs = [];
+        private readonly Lock _packsLock = new();
+
+        [JsonIgnore]
+        internal IEnumerable<KPack> Packs
         {
-            Id = id;
-            Character = character;
-            Anime = anime;
-            Rarity = rarity;
-            Title = title;
+            get { lock (_packsLock) return _packs.ToList(); }
         }
 
-        internal KResult SetAnime(KAnime anime)
+        void IKLinkable<KPack>.Link(KPack pack)
         {
-            if (anime.Equals(Anime)) return KResult.IdenticalVariantAnime;
-            if (!Character.ContainsAnime(anime)) return KResult.CharacterAnimeLinkDoesNotExist;
-
-            Anime = anime;
-
-            return KResult.Completed;
+            lock (_packsLock) _packs.Add(pack);
         }
 
-        internal KResult SetRarity(KRarity rarity)
+        void IKLinkable<KPack>.Unlink(KPack pack)
         {
-            if (rarity == Rarity) return KResult.IdenticalVariantRarity;
-
-            Rarity = rarity;
-
-            return KResult.Completed;
+            lock (_packsLock) _packs.Remove(pack);
+        }
+        
+        internal bool ContainsPack(KPack pack)
+        {
+            lock (_packsLock) return _packs.Contains(pack);
         }
 
-        internal KResult SetTitle(string title)
-        {
-            if (string.IsNullOrWhiteSpace(title)) return KResult.InvalidVariantTitle;
-
-            string trimmed = title.Trim();
-
-            if (trimmed == Title) return KResult.IdenticalVariantTitle;
-
-            Title = trimmed;
-
-            return KResult.Completed;
-        }
-
-        public override string ToString() 
-            => $"{Character} '{Title}'";
+        internal override KVariantData ToData() => new(Id, Character.Id, Anime.Id, Rarity, Title, Artist);
+        public override string ToString() => $"'{Character.DisplayName} {Title}' (ID: {Id})";
     }
 }

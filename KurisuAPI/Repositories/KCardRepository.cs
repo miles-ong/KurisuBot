@@ -1,105 +1,60 @@
 ﻿using KurisuAPI.Factories;
-using KurisuAPI.Records;
-using KurisuCore.Models;
+using KurisuAPI.Repositories.Bases;
+using KurisuCore.Models.Data;
 using Npgsql;
 using NpgsqlTypes;
 
 namespace KurisuAPI.Repositories
 {
-    public sealed class KCardRepository(DbConnectionFactory factory)
+    public sealed class KCardRepository(DbConnectionFactory factory) : KDataBulkRepository<KCardData>(factory)
     {
-        public async Task<List<KCardRow>> GetByOwnerAsync(long ownerId)
+        protected override string TableName => "carddata";
+        protected override string SelectColumns =>
+            "id, owner_id AS OwnerId, variant_id AS VariantId, time_obtained AS TimeObtained, border_id AS BorderId, overlay_id AS OverlayId, xp";
+        protected override string InsertColumns =>
+            "id, owner_id, variant_id, time_obtained, border_id, overlay_id, xp";
+        protected override string InsertValues =>
+            "@Id, @OwnerId, @VariantId, @TimeObtained, @BorderId, @OverlayId, @Xp";
+        protected override string UpdateQuery => """
+                                                 UPDATE carddata
+                                                 SET owner_id       = @OwnerId,
+                                                     variant_id     = @VariantId,
+                                                     time_obtained  = @TimeObtained,
+                                                     border_id      = @BorderId,
+                                                     overlay_id     = @OverlayId,
+                                                     xp             = @Xp
+                                                 WHERE id = @Id
+                                                 """;
+        protected override string TempTableColumns => """
+                                                      id BIGINT PRIMARY KEY,
+                                                      owner_id BIGINT,
+                                                      variant_id INT,
+                                                      time_obtained TIMESTAMPTZ,
+                                                      border_id INT,
+                                                      overlay_id INT,
+                                                      xp INT
+                                                      """;
+
+        protected override async Task WriteBulkRowAsync(
+            NpgsqlBinaryImporter writer,
+            KCardData data,
+            CancellationToken token)
         {
-            const string sql = """
-                SELECT id, variantid, timeobtained, borderid, overlayid
-                FROM carddata
-                WHERE ownerid = @ownerid
-            """;
+            await writer.WriteAsync(data.Id, NpgsqlDbType.Bigint, token);
 
-            await using var connection = await factory.CreateAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            if (data.OwnerId is not null) await writer.WriteAsync(data.OwnerId, NpgsqlDbType.Bigint, token);
+            else await writer.WriteNullAsync(token);
 
-            command.Parameters.AddWithValue("@ownerid", ownerId);
+            await writer.WriteAsync(data.VariantId, NpgsqlDbType.Integer, token);
+            await writer.WriteAsync(DateTime.SpecifyKind(data.TimeObtained, DateTimeKind.Utc), NpgsqlDbType.TimestampTz, token);
 
-            List<KCardRow> cards = new();
-            await using var reader = await command.ExecuteReaderAsync();
+            if (data.BorderId is not null) await writer.WriteAsync(data.BorderId, NpgsqlDbType.Integer, token);
+            else await writer.WriteNullAsync(token);
+            
+            if (data.OverlayId is not null) await writer.WriteAsync(data.OverlayId, NpgsqlDbType.Integer, token);
+            else await writer.WriteNullAsync(token);
 
-            while (await reader.ReadAsync())
-            {
-                KCardRow row = new(
-                    reader.GetInt64(0),
-                    reader.GetInt32(1),
-                    DateTime.SpecifyKind(reader.GetDateTime(2), DateTimeKind.Utc),
-                    reader.IsDBNull(3) ? null : reader.GetInt32(3),
-                    reader.IsDBNull(4) ? null : reader.GetInt32(4)
-                );
-
-                cards.Add(row);
-            }
-
-            return cards;
-        }
-
-        public async Task BulkUpsertAsync(IEnumerable<KCard> cards, CancellationToken token)
-        {
-            await using var connection = await factory.CreateAsync(token);
-            await using var transaction = await connection.BeginTransactionAsync(token);
-
-            const string tempSql = """
-                CREATE TEMP TABLE temp_carddata (
-                    id BIGINT PRIMARY KEY,
-                    ownerid BIGINT,
-                    variantid INT,
-                    timeobtained TIMESTAMPTZ,
-                    borderid INT,
-                    overlayid INT
-                ) ON COMMIT DROP
-            """;
-
-            await using var tempCommand = new NpgsqlCommand(tempSql, connection, transaction);
-            await tempCommand.ExecuteNonQueryAsync(token);
-            NpgsqlBinaryImporter? writer = null;
-
-            try
-            {
-                writer = await connection.BeginBinaryImportAsync("""
-                    COPY temp_carddata (id, ownerid, variantid, timeobtained, borderid, overlayid)
-                    FROM STDIN (FORMAT BINARY)
-                """);
-
-                foreach (KCard card in cards)
-                {
-                    await writer.StartRowAsync();
-                    await writer.WriteAsync(card.Id, NpgsqlDbType.Bigint);
-                    await writer.WriteAsync(card.Owner!.Id, NpgsqlDbType.Bigint);
-                    await writer.WriteAsync(card.Variant.Id, NpgsqlDbType.Integer);
-                    await writer.WriteAsync(card.TimeObtained, NpgsqlDbType.TimestampTz);
-                    await writer.WriteAsync(card.BorderId, NpgsqlDbType.Integer);
-                    await writer.WriteAsync(card.OverlayId, NpgsqlDbType.Integer);
-                }
-
-                await writer.CompleteAsync(token);
-            }
-            finally
-            {
-                writer?.Dispose();
-            }
-
-            const string upsertSql = """
-                INSERT INTO carddata (id, ownerid, variantid, timeobtained, borderid, overlayid)
-                SELECT id, ownerid, variantid, timeobtained, borderid, overlayid
-                FROM temp_carddata
-                ON CONFLICT (id) DO UPDATE SET
-                    ownerid         = EXCLUDED.ownerid,
-                    variantid       = EXCLUDED.variantid,
-                    timeobtained    = EXCLUDED.timeobtained,
-                    borderid        = EXCLUDED.borderid,
-                    overlayid       = EXCLUDED.overlayid
-            """;
-
-            await using var upsertCommand = new NpgsqlCommand(upsertSql, connection, transaction);
-            await upsertCommand.ExecuteNonQueryAsync(token);
-            await transaction.CommitAsync(token);
+            await writer.WriteAsync(data.Xp, NpgsqlDbType.Integer, token);
         }
     }
 }

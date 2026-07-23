@@ -1,24 +1,37 @@
 ﻿using KurisuCore.Enums;
+using KurisuCore.Result;
 using System.Text.Json.Serialization;
+using KurisuCore.Models.Bases;
+using KurisuCore.Models.Data;
 
 namespace KurisuCore.Models
 {
-    public sealed class KUser
+    [method: JsonConstructor]
+    public sealed class KUser(
+        KSettings settings,
+        DateTime lastQuizRegen,
+        int quizTokens,
+        int pity,
+        int coins,
+        int rDust,
+        int srDust,
+        int ssrDust,
+        int urDust)
+        : KEntity<long, KUserData>, IKLinkable<KCard>
     {
-        public long Id { get; }
-        public string Username { get; set; }
-        public KSettings Settings { get; private set; }
-        public DateTime LastQuizRegen { get; private set; }
+        public KSettings Settings { get; internal set; } = settings;
+        public DateTime LastQuizRegen { get; internal set; } = lastQuizRegen;
+        public override string DisplayName => "User";
 
+        private int _quizTokens = quizTokens;
+        private int _pity = pity;
+        private int _coins = coins;
+        private int _rDust = rDust;
+        private int _srDust = srDust;
+        private int _ssrDust = ssrDust;
+        private int _urDust = urDust;
         private readonly HashSet<KCard> _cards = new();
-        private readonly object _cardsLock = new();
-        private int _pity;
-        private int _quizTokens;
-        private int _coins;
-        private int _rDust;
-        private int _srDust;
-        private int _ssrDust;
-        private int _urDust;
+        private readonly Lock _cardsLock = new();
 
         [JsonIgnore]
         public IEnumerable<KCard> Cards
@@ -26,41 +39,19 @@ namespace KurisuCore.Models
             get { lock (_cardsLock) return _cards.ToList(); }
         }
 
-        [JsonConstructor]
-        public KUser(long id, string username, KSettings settings, DateTime lastQuizRegen)
+        void IKLinkable<KCard>.Link(KCard card)
         {
-            Id = id;
-            Username = username;
-            Settings = settings;
-            LastQuizRegen = lastQuizRegen;
-        }
-
-        internal KResult SetUsername(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username)) return KResult.InvalidUsername;
-
-            Username = username;
-
-            return KResult.Completed;
-        }
-
-        internal KResult AddCard(KCard card)
-        {
-            if (_cards.Contains(card)) return KResult.UserAlreadyContainsCard;
-            if (_cards.Count >= Settings.MaxBinderSize) return KResult.UserMaxCardsReached;
-
             lock (_cardsLock) _cards.Add(card);
-
-            return KResult.Completed;
         }
 
-        internal KResult RemoveCard(KCard card)
+        void IKLinkable<KCard>.Unlink(KCard card)
         {
-            if (!_cards.Contains(card)) return KResult.UserDoesNotContainCard;
-
             lock (_cardsLock) _cards.Remove(card);
+        }
 
-            return KResult.Completed;
+        internal bool ContainsCard(KCard card)
+        {
+            lock (_cardsLock) return _cards.Contains(card);
         }
 
         public int GetBalance(KBalance balance)
@@ -69,8 +60,8 @@ namespace KurisuCore.Models
 
             return balance switch
             {
-                KBalance.Pity => _pity,
                 KBalance.QuizTokens => _quizTokens,
+                KBalance.Pity => _pity,
                 KBalance.Coins => _coins,
                 KBalance.RDust => _rDust,
                 KBalance.SRDust => _srDust,
@@ -86,21 +77,22 @@ namespace KurisuCore.Models
 
             switch (balance)
             {
-                case KBalance.Pity: _pity = amount; break;
                 case KBalance.QuizTokens: _quizTokens = amount; break;
+                case KBalance.Pity: _pity = amount; break;
                 case KBalance.Coins: _coins = amount; break;
                 case KBalance.RDust: _rDust = amount; break;
                 case KBalance.SRDust: _srDust = amount; break;
                 case KBalance.SSRDust: _ssrDust = amount; break;
                 case KBalance.URDust: _urDust = amount; break;
+                default: return;
             }
         }
 
         internal void ModifyBalance(KBalance balance, KOperation operation, int amount)
         {
-            int current = GetBalance(balance);
+            var current = GetBalance(balance);
 
-            int modified = operation switch
+            var modified = operation switch
             {
                 KOperation.Add => current + amount,
                 KOperation.Subtract => current - amount,
@@ -125,8 +117,8 @@ namespace KurisuCore.Models
         {
             if (_quizTokens >= Settings.MaxQuizTokens) return;
 
-            TimeSpan elapsed = DateTime.UtcNow - LastQuizRegen;
-            int intervals = (int)(elapsed.TotalMinutes / Settings.QuizTokenRefreshInterval);
+            var elapsed = DateTime.UtcNow - LastQuizRegen;
+            var intervals = (int)(elapsed.TotalMinutes / Settings.QuizTokenRefreshInterval);
 
             if (intervals > 0)
             {
@@ -135,19 +127,8 @@ namespace KurisuCore.Models
             }
         }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is KUser other && Id == other.Id;
-        }
-
-        public override int GetHashCode()
-        {
-            return Id.GetHashCode();
-        }
-
-        public override string ToString()
-        {
-            return $"'{Username}' (ID: {Id})";
-        }
+        internal override KUserData ToData() => new(Id, Settings, LastQuizRegen, _quizTokens, _pity, _coins, _rDust,
+            _srDust, _ssrDust, _urDust);
+        public override string ToString() => $"User (ID: {Id})";
     }
 }

@@ -1,5 +1,5 @@
 ﻿using Dapper;
-using KurisuAPI.Cache;
+using KurisuAPI.Caches;
 using KurisuAPI.Factories;
 using KurisuAPI.Repositories;
 using KurisuAPI.Repositories.Handlers;
@@ -31,7 +31,7 @@ namespace KurisuAPI.Bootstrap
             collection.AddSingleton<KCardCache>();
             collection.AddSingleton<KUserCache>();
 
-            collection.AddSingleton<KEntityLoader>();
+            collection.AddSingleton<KEntityFactory>();
 
             collection.AddSingleton<KAnimeService>();
             collection.AddSingleton<KCharacterService>();
